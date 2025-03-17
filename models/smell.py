@@ -24,5 +24,7 @@ class Smell:
     def __str__(self):
         """String representation."""
         line_info = f"Lines {self.start_line}-{self.end_line}" if self.end_line else f"Line {self.start_line}"
-        return f"[-{self.penalty}] {self.rule_id} {self.rule_name}: {self.message} ({line_info})"
+        return (f"Rule ID: {self.rule_id}, Rule Name: {self.rule_name}, "
+                f"Message: {self.message}, Penalty: {self.penalty:.2f}, "
+                f"Affected Line(s): {line_info}")
 
