@@ -33,11 +33,3 @@ class SmellEngine:
         with open(self.filepath, "r") as file:
             source_code = file.read()
         return self.engine.analyze(source_code)
-
-# Example usage
-if __name__ == "__main__":
-    collector = SmellEngine("data/long_loop.py")
-    smells = collector.collect()
-    
-    for smell in smells:
-        print(smell)
