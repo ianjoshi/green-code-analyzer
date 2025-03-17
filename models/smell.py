@@ -12,7 +12,7 @@ class Smell:
     - message (str): A description of the detected smell.
     - penalty (float): The penalty applied to the energy score due to the smell, which starts at 100.
     - start_line (int): The starting line number where the smell occurs.
-    - end_line (Optional[int]): The ending line number of the smell occurrence (if applicable).
+    - end_line (Optional[int]): The ending line number of the smell occurrence (if applicable). If null, assume smell only covers single line.
     """
     rule_id: str
     rule_name: str
