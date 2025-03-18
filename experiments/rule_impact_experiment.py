@@ -36,9 +36,6 @@ class RuleImpactExperiment:
         # Create results directory if it doesn't exist
         os.makedirs("results/rule_impact_estimates", exist_ok=True)
 
-    
-                    
-
     def run_experiment(self):
         """
         Orchestrates and runs the experiment sequence:
@@ -47,7 +44,7 @@ class RuleImpactExperiment:
         3. Runs each task multiple times in a shuffled order with rest intervals.
         """
         self._warn_and_prepare()
-        #self._warmup_fibonacci()
+        self._warmup_fibonacci()
         self.energibridge.start_service()
 
         rule_names = list(self.rules.keys())
