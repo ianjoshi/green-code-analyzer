@@ -4,9 +4,6 @@ import os
 from energibridge_executor import EnergibridgeExecutor
 from pyEnergiBridge.api import EnergiBridgeRunner
 
-
-
-
 class RuleImpactExperiment:
     """
     A class for running controlled energy consumption measurement experiments for the rules,
