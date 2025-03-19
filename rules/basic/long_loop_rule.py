@@ -7,12 +7,18 @@ class LongLoopRule(BaseRule):
     Detects long-running loops that may cause excessive energy consumption.
     Penalizes inefficient loops with a high number of iterations.
     """
-    def __init__(self):
-        super().__init__(id="long_loop",
-                         name="LongLoopRule", 
-                         message="Loop may be inefficient due to excessive iterations.", 
-                         penalty=10.0)
+    
+    id = "long_loop"
+    name = "LongLoopRule"
+    message = "Loop may be inefficient due to excessive iterations."
+    penalty = 10.0
 
+    def __init__(self):
+        super().__init__(id=self.id,
+                         name=self.name, 
+                         message=self.message, 
+                         penalty=self.penalty)
+    
     def should_apply(self, node) -> bool:
         """
         Applies to 'for' and 'while' loop nodes.
