@@ -15,12 +15,12 @@ class RuleImpactExperiment:
         """
         Initializes the experiment with the necessary parameters.
 
-        Parameters:
-        - rules (dict): Dictionary of rules to be tested with rule name as key and a list of functions that execute an example of the rule as value.
-        - num_runs (int): Number of times each task should be executed.
-        - warmup_duration (int): Warm-up period (in seconds) before measurements.
-        - rest_duration (int): Rest period (in seconds) between runs.
-        - measurement_duration (int): Maximum duration of each measurement in seconds.
+        :param rules: Dictionary of rules to be tested with rule name as key and a list of functions
+                      that execute an example of the rule as value.
+        :param num_runs: Number of times each task should be executed, defaults to 5.
+        :param warmup_duration: Warm-up period (in seconds) before measurements, defaults to 300.
+        :param rest_duration: Rest period (in seconds) between runs, defaults to 60.
+        :param measurement_duration: Maximum duration of each measurement in seconds, defaults to 500.
         """
         self.rules = rules
         self.num_runs = num_runs
@@ -64,7 +64,9 @@ class RuleImpactExperiment:
         print("Experiment complete.")
 
     def _warn_and_prepare(self):
-        """Provides instructions to the user to optimize system conditions before running the experiment."""
+        """
+        Provides instructions to the user to optimize system conditions before running the experiment.
+        """
         print("WARNING: Before proceeding, please:")
         print("- Close all unnecessary applications.")
         print("- Kill unnecessary services.")
@@ -77,7 +79,9 @@ class RuleImpactExperiment:
         input()
 
     def _warmup_fibonacci(self):
-        """Runs Fibonacci calculations continuously for a specified duration to warm up the CPU."""
+        """
+        Runs Fibonacci calculations continuously for a specified duration to warm up the CPU.
+        """
         print(f"Starting Fibonacci warm-up for {self.warmup_duration} seconds...")
         start_time = time.time()
 
@@ -88,7 +92,12 @@ class RuleImpactExperiment:
         print("Warm-up complete.")
 
     def _fib(self, n):
-        """Computes the nth Fibonacci number iteratively."""
+        """
+        Computes the nth Fibonacci number iteratively.
+
+        :param n: The index of the Fibonacci sequence to compute.
+        :return: The nth Fibonacci number.
+        """
         if n <= 1:
             return n
         a, b = 0, 1
@@ -97,7 +106,12 @@ class RuleImpactExperiment:
         return b
     
     def _estimate_rule_impact(self, rule_examples, output_file):
-        """Estimates the impact of the rule on the energy consumption of the system."""
+        """
+        Estimates the impact of the rule on the energy consumption of the system.
+
+        :param rule_examples: List of functions representing examples of a rule to execute.
+        :param output_file: Path where the measurement results should be saved.
+        """
         # Shuffle order of rule examples
         random.shuffle(rule_examples)
         

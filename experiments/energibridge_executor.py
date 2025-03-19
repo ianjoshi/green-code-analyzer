@@ -6,13 +6,12 @@ class EnergibridgeExecutor:
     """
     A class to handle the execution of EnergiBridge commands for energy measurements.
     """
+    
     def __init__(self, max_measurement_duration=10):
         """
         Initializes the EnergiBridgeExecutor with output file and duration.
         
-        Parameters:
-        - output_file (str): Path to store the measurement results.
-        - max_measurement_duration (int): Maximum duration in seconds for measurement.
+        :param max_measurement_duration: Maximum duration in seconds for measurement, defaults to 10.
         """
         self.max_measurement_duration = max_measurement_duration
         self.rapl_service = "rapl"
@@ -25,11 +24,8 @@ class EnergibridgeExecutor:
         """
         Executes a command in the system shell.
         
-        Parameters:
-        - command (str): The command to execute.
-        
-        Returns:
-        - str: Output of the command execution.
+        :param command: The command to execute.
+        :return: Output of the command execution or None if an error occurs.
         """
         try:
             result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
@@ -59,7 +55,9 @@ class EnergibridgeExecutor:
     def run_measurement(self, output_file="results/results.csv"):
         """
         Runs EnergiBridge measurement and stores the results in the specified file.
+        
+        :param output_file: Path to store the measurement results, defaults to "results/results.csv".
         """
-        print(f"Running measurement...")
+        print("Running measurement...")
         self._run_command(f'{self.energibridge_exe} -o {output_file} --summary timeout {self.max_measurement_duration}')
         print("Measurement complete.")
