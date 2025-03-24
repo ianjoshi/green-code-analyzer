@@ -1,4 +1,5 @@
 import ast
+from typing import Optional
 from models.smell import Smell
 from rules.base_rule import BaseRule
 
@@ -10,14 +11,16 @@ class LongLoopRule(BaseRule):
     
     id = "long_loop"
     name = "LongLoopRule"
-    message = "Loop may be inefficient due to excessive iterations."
+    description = "Loop may be inefficient due to excessive iterations."
     penalty = 10.0
+    optimization = "Consider using a more efficient algorithm or data structure to reduce the number of iterations."
 
     def __init__(self):
         super().__init__(id=self.id,
                          name=self.name, 
-                         message=self.message, 
-                         penalty=self.penalty)
+                         description=self.description, 
+                         penalty=self.penalty,
+                         optimization=self.optimization)
     
     def should_apply(self, node) -> bool:
         """
@@ -48,8 +51,9 @@ class LongLoopRule(BaseRule):
                         smells.append(Smell(
                             rule_id=self.id,
                             rule_name=self.name,
-                            message=self.message,
+                            description=self.description,
                             penalty=self.penalty,
+                            optimization=self.optimization,
                             start_line=node.lineno
                         ))
         

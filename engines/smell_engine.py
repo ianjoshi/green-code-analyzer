@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from typing import List
 from engines.rule_engine import RuleEngine
 from models.smell import Smell
@@ -32,4 +33,27 @@ class SmellEngine:
         """
         with open(self.filepath, "r") as file:
             source_code = file.read()
-        return self.engine.analyze(source_code)
+        
+        # Collect all detected smells
+        smells = self.engine.analyze(source_code)
+
+        return self.organize_smells_by_line(smells)
+
+    def organize_smells_by_line(self, smells: List[Smell]) -> OrderedDict:
+        """
+        Reorganizes a list of Smell objects into an OrderedDict where keys are line numbers
+        and values are lists of all smells affecting that line.
+        
+        :param smells: A list of Smell objects from the smell engine.
+        :return: An OrderedDict mapping line numbers to lists of Smell objects.
+        """
+        # Temporary dict to collect smells by line
+        line_dict = {}
+
+        for smell in smells:
+            end_line = smell.end_line if smell.end_line is not None else smell.start_line
+            for line in range(smell.start_line, end_line + 1):
+                line_dict.setdefault(line, []).append(smell)
+
+        # Convert the dictionary to an OrderedDict, sorted by line number
+        return OrderedDict(sorted(line_dict.items(), key=lambda item: item[0]))
