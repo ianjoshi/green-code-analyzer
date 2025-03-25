@@ -136,7 +136,7 @@ function processAnalyzerOutput(
   let match;
   while ((match = regex.exec(output)) !== null) {
     const ruleName = match[2];
-    const message = match[3];
+    const description = match[3];
     const penalty = parseFloat(match[4]);
     const optimization = match[5];
     const lineNumber = parseInt(match[6]) - 1; // Turn into 0-indexed line number
@@ -144,9 +144,15 @@ function processAnalyzerOutput(
 
     // Create a hover message that includes the rule details
     const hoverMessage = new vscode.MarkdownString();
-    hoverMessage.appendMarkdown(`**${ruleName}** (NutriScore: ${nutriScore})\n\n`);
-    hoverMessage.appendMarkdown(`${message}\n\n`);
-    hoverMessage.appendMarkdown(`**Penalty**: ${penalty}\n\n`);
+    if (nutriScore === "NaN") {
+      hoverMessage.appendMarkdown(`**${ruleName}**\n\n`);
+    } else {
+      hoverMessage.appendMarkdown(`**${ruleName}** (NutriScore: ${nutriScore})\n\n`);
+    }
+    hoverMessage.appendMarkdown(`${description}\n\n`);
+    if (!isNaN(penalty)) {
+      hoverMessage.appendMarkdown(`**Penalty**: ${penalty}\n\n`);
+    }
     hoverMessage.appendMarkdown(`**Optimization**: ${optimization}`);
 
     // Defines how the editor should visually decorate a part of the text
@@ -163,7 +169,7 @@ function processAnalyzerOutput(
 
     // Add the decoration to the map and create the message to be displayed when this respective line is clicked
     decorationsMap[nutriScore].push(decoration);
-    lineMessages[lineNumber] = `${ruleName}: ${message} (Penalty: ${penalty})`;
+    lineMessages[lineNumber] = `${ruleName}: ${description}. Optimization: ${optimization}`;
   }
 
   // Create decoration types dynamically for each NutriScore level
