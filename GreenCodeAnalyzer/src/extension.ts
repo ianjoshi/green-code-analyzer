@@ -10,6 +10,7 @@ const nutriScoreColors: { [key: string]: string } = {
   C: "rgba(255, 200, 0, 0.5)",
   D: "rgba(255, 100, 0, 0.5)",
   E: "rgba(255, 0, 0, 0.5)",
+  NaN: "rgba(255, 123, 0, 0.6)",
 };
 
 let lineMessages: { [key: number]: string } = {};
@@ -119,13 +120,14 @@ function processAnalyzerOutput(
 
   // Use regex to parse the output
   const regex =
-    /Rule ID: (.+?), Rule Name: (.+?), Message: (.+?), Penalty: (.+?), Affected Line\(s\): Line (\d+)/g;
+    /Rule ID: (.+?), Rule Name: (.+?), Description: (.+?)(?:, Penalty: (.+?))?, Optimization: (.+?), Affected Line\(s\): Line (\d+)/g;
   const decorationsMap: { [key: string]: vscode.DecorationOptions[] } = {
     A: [],
     B: [],
     C: [],
     D: [],
     E: [],
+    NaN: [],
   };
 
   // Clear previous decorations and messages
@@ -136,12 +138,27 @@ function processAnalyzerOutput(
     const ruleName = match[2];
     const message = match[3];
     const penalty = parseFloat(match[4]);
-    const lineNumber = parseInt(match[5]) - 1; // Turn into 0-indexed line number
+    const optimization = match[5];
+    const lineNumber = parseInt(match[6]) - 1; // Turn into 0-indexed line number
     const nutriScore = getNutriScore(penalty); // Get NutriScore level based on penalty
 
-    // Defines how the editor should visually decorate (highlight) a part of the text
+    // Create a hover message that includes the rule details
+    const hoverMessage = new vscode.MarkdownString();
+    hoverMessage.appendMarkdown(`**${ruleName}** (NutriScore: ${nutriScore})\n\n`);
+    hoverMessage.appendMarkdown(`${message}\n\n`);
+    hoverMessage.appendMarkdown(`**Penalty**: ${penalty}\n\n`);
+    hoverMessage.appendMarkdown(`**Optimization**: ${optimization}`);
+
+    // Defines how the editor should visually decorate a part of the text
     const decoration: vscode.DecorationOptions = {
-      range: new vscode.Range(lineNumber, 0, lineNumber, 0),
+      // Extend the range to cover the entire line for hover purposes
+      range: new vscode.Range(
+        lineNumber, 
+        0, 
+        lineNumber, 
+        editor.document.lineAt(lineNumber).text.length
+      ),
+      hoverMessage: hoverMessage
     };
 
     // Add the decoration to the map and create the message to be displayed when this respective line is clicked
@@ -154,11 +171,18 @@ function processAnalyzerOutput(
     {};
   for (const [score, color] of Object.entries(nutriScoreColors)) {
     decorationTypes[score] = vscode.window.createTextEditorDecorationType({
-      backgroundColor: color,
-      overviewRulerColor: color,
-      overviewRulerLane: vscode.OverviewRulerLane.Right,
-      isWholeLine: true,
-    });
+    // Remove the backgroundColor property to avoid highlighting the entire line
+    isWholeLine: false, // Change to false to not highlight the whole line
+    gutterIconPath: context.asAbsolutePath(path.join('resources', `nutriscore-${score.toLowerCase()}.svg`)),
+    gutterIconSize: 'contain',
+    // Alternatively, use a colored bar in the margin
+    borderColor: color,
+    borderWidth: '0 0 0 3px', // Left border only
+    borderStyle: 'solid',
+    // Keep the overview ruler indicator
+    overviewRulerColor: color,
+    overviewRulerLane: vscode.OverviewRulerLane.Right,
+  });
 
     // Apply decorations to the editor and keep the message to show when the line is clicked
     editor.setDecorations(decorationTypes[score], decorationsMap[score]);
@@ -182,6 +206,9 @@ function processAnalyzerOutput(
 // Function to map the penalty of a rule to a NutriScore level.
 // This way we know what color to use to highlight the line.
 function getNutriScore(penalty: number): string {
+  if(isNaN(penalty)) {
+    return "NaN";
+  }
   if (penalty <= 5) {
     return "A";
   }
