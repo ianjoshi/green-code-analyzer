@@ -3,6 +3,7 @@ from typing import List
 from engines.rule_engine import RuleEngine
 from models.smell import Smell
 from rules.basic.long_loop_rule import LongLoopRule
+from rules.chain_indexing_rule import ChainIndexingRule
 
 class SmellEngine:
     """
@@ -24,6 +25,9 @@ class SmellEngine:
 
         # Add basic rules
         self.engine.add_rule(LongLoopRule())
+
+        # Add data science rules
+        self.engine.add_rule(ChainIndexingRule())
 
     def collect(self) -> List[Smell]:
         """
