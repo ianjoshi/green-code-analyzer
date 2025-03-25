@@ -5,14 +5,19 @@ from rules.base_rule import BaseRule
 class LongLoopRule(BaseRule):
     """
     Detects long-running loops that may cause excessive energy consumption.
-    Penalizes inefficient loops with a high number of iterations.
     """
-    def __init__(self):
-        super().__init__(id="long_loop",
-                         name="LongLoopRule", 
-                         message="Loop may be inefficient due to excessive iterations.", 
-                         penalty=10.0)
+    
+    id = "long_loop"
+    name = "LongLoopRule"
+    description = "Loop may be inefficient due to excessive iterations."
+    optimization = "Consider using a more efficient algorithm or data structure to reduce the number of iterations."
 
+    def __init__(self):
+        super().__init__(id=self.id,
+                         name=self.name, 
+                         description=self.description, 
+                         optimization=self.optimization)
+    
     def should_apply(self, node) -> bool:
         """
         Applies to 'for' and 'while' loop nodes.
@@ -42,8 +47,9 @@ class LongLoopRule(BaseRule):
                         smells.append(Smell(
                             rule_id=self.id,
                             rule_name=self.name,
-                            message=self.message,
+                            description=self.description,
                             penalty=self.penalty,
+                            optimization=self.optimization,
                             start_line=node.lineno
                         ))
         

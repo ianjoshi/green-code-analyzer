@@ -1,5 +1,6 @@
 import ast
 from abc import ABC, abstractmethod
+from typing import Optional
 from models.smell import Smell
 
 class BaseRule(ABC):
@@ -9,14 +10,23 @@ class BaseRule(ABC):
     Attributes:
     - id (str): A unique identifier for the rule.
     - name (str): The unique name of the rule.
-    - message (str): A default message describing the rule.
-    - penalty (float): The penalty applied to the energy score due to the smell, which starts at 100.
+    - description (str): A default description explaining the energy code smell.
+    - optimization (Optional[str]): A default suggestion for fixing the detected smell, if available.
+    - penalty (Optional[float]): The penalty applied to the energy score due to the smell, which starts at 100.
     """
-    def __init__(self, id: str, name: str, message: str, penalty: float) -> None:
+    def __init__(
+        self,
+        id: str,
+        name: str,
+        description: str,
+        optimization: Optional[str] = None,
+        penalty: Optional[float] = None
+    ) -> None:
         self.id: str = id
         self.name: str = name
-        self.message: str = message
-        self.penalty: float = penalty 
+        self.description: str = description
+        self.optimization: Optional[str] = optimization
+        self.penalty: Optional[float] = penalty
     
     @abstractmethod
     def should_apply(self, node: ast.AST) -> bool:
