@@ -14,12 +14,14 @@ const nutriScoreColors: { [key: string]: string } = {
 };
 
 let lineMessages: { [key: number]: string } = {};
+// Add a variable to store active decoration types
+let activeDecorationTypes: vscode.TextEditorDecorationType[] = [];
 
 export function activate(context: vscode.ExtensionContext) {
   console.log("GreenCodeAnalyzer is now active!");
 
   // Command to run the analyzer
-  const disposable = vscode.commands.registerCommand(
+  const analyzerDisposable = vscode.commands.registerCommand(
     "greencodeanalyzer.runAnalyzer",
     async () => {
       const editor = vscode.window.activeTextEditor;
@@ -27,6 +29,9 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showErrorMessage("No active file found.");
         return;
       }
+
+      // Clear any existing decorations when analyzer is run
+      clearDecorations();
 
       const filePath = editor.document.fileName;
 
@@ -42,7 +47,25 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  context.subscriptions.push(disposable);
+  // Command to clear all gutters
+  const clearGuttersDisposable = vscode.commands.registerCommand(
+    "greencodeanalyzer.clearGutters",
+    () => {
+      clearDecorations();
+      vscode.window.showInformationMessage("GreenCodeAnalyzer gutters cleared.");
+    }
+  );
+
+  context.subscriptions.push(analyzerDisposable, clearGuttersDisposable);
+}
+
+// Function to clear all active decorations
+function clearDecorations() {
+  activeDecorationTypes.forEach(decorationType => {
+    decorationType.dispose();
+  });
+  activeDecorationTypes = [];
+  lineMessages = {};
 }
 
 // First, take the file being edited in the extension and save it to the data folder in the project repository
@@ -72,8 +95,6 @@ function runAnalyzer(
     if (err) {
       vscode.window.showErrorMessage(`Failed to save file: ${err.message}`);
     } else {
-      vscode.window.showInformationMessage(`File saved to ${destinationPath}`);
-
       // Run the main script
       runMainScript(projectRoot, context);
     }
@@ -102,10 +123,6 @@ function runMainScript(projectRoot: string, context: vscode.ExtensionContext) {
   pythonProcess.stderr.on("data", (data) => {
     vscode.window.showErrorMessage(`Error: ${data.toString()}`);
   });
-
-  pythonProcess.on("close", (code) => {
-    vscode.window.showInformationMessage(`main.py exited with code ${code}`);
-  });
 }
 
 // We want to parse the output from main.py and highlight the lines in the editor based on the NutriScore.
@@ -131,7 +148,7 @@ function processAnalyzerOutput(
   };
 
   // Clear previous decorations and messages
-  lineMessages = {};
+  clearDecorations();
 
   let match;
   while ((match = regex.exec(output)) !== null) {
@@ -144,12 +161,14 @@ function processAnalyzerOutput(
 
     // Create a hover message that includes the rule details
     const hoverMessage = new vscode.MarkdownString();
+    hoverMessage.appendMarkdown(`## GreenCodeAnalyzer\n`);
+    hoverMessage.appendMarkdown(`---\n`);
     if (nutriScore === "NaN") {
-      hoverMessage.appendMarkdown(`**${ruleName}**\n\n`);
+      hoverMessage.appendMarkdown(`### ${ruleName}\n`);
     } else {
       hoverMessage.appendMarkdown(`**${ruleName}** (NutriScore: ${nutriScore})\n\n`);
     }
-    hoverMessage.appendMarkdown(`${description}\n\n`);
+    hoverMessage.appendMarkdown(`**Description**: ${description}\n\n`);
     if (!isNaN(penalty)) {
       hoverMessage.appendMarkdown(`**Penalty**: ${penalty}\n\n`);
     }
@@ -190,22 +209,11 @@ function processAnalyzerOutput(
     overviewRulerLane: vscode.OverviewRulerLane.Right,
   });
 
+    // Store the decoration type in our active decorations array
+    activeDecorationTypes.push(decorationTypes[score]);
+
     // Apply decorations to the editor and keep the message to show when the line is clicked
     editor.setDecorations(decorationTypes[score], decorationsMap[score]);
-  }
-
-  // Used to display the message when a line is clicked
-  // First ensure that the event listener is added only once to prevent multiple notifications for the same event
-  if (context.subscriptions.length === 1) {
-    context.subscriptions.push(
-      vscode.window.onDidChangeTextEditorSelection((event) => {
-        // Retrieve the line number of the selected line and show the message corresponding to it
-        const selectedLine = event.selections[0].start.line;
-        if (lineMessages[selectedLine]) {
-          vscode.window.showInformationMessage(lineMessages[selectedLine]);
-        }
-      })
-    );
   }
 }
 
