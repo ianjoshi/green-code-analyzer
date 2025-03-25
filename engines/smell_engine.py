@@ -13,6 +13,7 @@ from rules.ignoring_inplace_operations_rule import IgnoringInplaceOperationsRule
 from rules.inefficient_caching_of_common_arrays_rule import IneffectiveCachingOfCommonArrays
 from rules.inefficient_iterrows_rule import InefficientIterationWithIterrows
 from rules.large_batch_size_causing_memory_swapping_rule import LargeBatchSizesCausingMemorySwapping
+from rules.recomputing_group_by_rule import RecomputingGroupByRule
 from rules.redundant_model_refitting_rule import RedundantModelRefittingRule
 
 class SmellEngine:
@@ -45,6 +46,7 @@ class SmellEngine:
         self.engine.add_rule(IneffectiveCachingOfCommonArrays())
         self.engine.add_rule(InefficientIterationWithIterrows())
         self.engine.add_rule(LargeBatchSizesCausingMemorySwapping())
+        self.engine.add_rule(RecomputingGroupByRule())
         self.engine.add_rule(RedundantModelRefittingRule())
 
     def collect(self) -> List[Smell]:
