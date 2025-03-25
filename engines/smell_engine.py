@@ -8,8 +8,13 @@ from rules.basic.long_loop_rule import LongLoopRule
 from rules.batch_matrix_multiplication_rule import BatchMatrixMultiplicationRule
 from rules.broadcasting_rule import BroadcastingRule
 from rules.chain_indexing_rule import ChainIndexingRule
+from rules.excessive_gpu_tensor_transfers_rule import ExcessiveGPUTensorTransfersRule
 from rules.ignoring_inplace_operations_rule import IgnoringInplaceOperationsRule
+from rules.inefficient_caching_of_common_arrays_rule import IneffectiveCachingOfCommonArrays
 from rules.inefficient_iterrows_rule import InefficientIterationWithIterrows
+from rules.large_batch_size_causing_memory_swapping_rule import LargeBatchSizesCausingMemorySwapping
+from rules.recomputing_group_by_rule import RecomputingGroupByRule
+from rules.redundant_model_refitting_rule import RedundantModelRefittingRule
 
 class SmellEngine:
     """
@@ -36,8 +41,13 @@ class SmellEngine:
         self.engine.add_rule(BatchMatrixMultiplicationRule())
         self.engine.add_rule(BroadcastingRule())
         self.engine.add_rule(ChainIndexingRule())
+        self.engine.add_rule(ExcessiveGPUTensorTransfersRule())
         self.engine.add_rule(IgnoringInplaceOperationsRule())
+        self.engine.add_rule(IneffectiveCachingOfCommonArrays())
         self.engine.add_rule(InefficientIterationWithIterrows())
+        self.engine.add_rule(LargeBatchSizesCausingMemorySwapping())
+        self.engine.add_rule(RecomputingGroupByRule())
+        self.engine.add_rule(RedundantModelRefittingRule())
 
     def collect(self) -> List[Smell]:
         """
