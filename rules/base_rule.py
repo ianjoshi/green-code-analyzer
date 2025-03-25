@@ -11,15 +11,22 @@ class BaseRule(ABC):
     - id (str): A unique identifier for the rule.
     - name (str): The unique name of the rule.
     - description (str): A default description explaining the energy code smell.
-    - penalty (float): The penalty applied to the energy score due to the smell, which starts at 100.
     - optimization (Optional[str]): A default suggestion for fixing the detected smell, if available.
+    - penalty (Optional[float]): The penalty applied to the energy score due to the smell, which starts at 100.
     """
-    def __init__(self, id: str, name: str, description: str, penalty: float, optimization: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        id: str,
+        name: str,
+        description: str,
+        optimization: Optional[str] = None,
+        penalty: Optional[float] = None
+    ) -> None:
         self.id: str = id
         self.name: str = name
         self.description: str = description
-        self.penalty: float = penalty
         self.optimization: Optional[str] = optimization
+        self.penalty: Optional[float] = penalty
     
     @abstractmethod
     def should_apply(self, node: ast.AST) -> bool:

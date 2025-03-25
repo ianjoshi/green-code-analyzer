@@ -1,25 +1,21 @@
 import ast
-from typing import Optional
 from models.smell import Smell
 from rules.base_rule import BaseRule
 
 class LongLoopRule(BaseRule):
     """
     Detects long-running loops that may cause excessive energy consumption.
-    Penalizes inefficient loops with a high number of iterations.
     """
     
     id = "long_loop"
     name = "LongLoopRule"
     description = "Loop may be inefficient due to excessive iterations."
-    penalty = 10.0
     optimization = "Consider using a more efficient algorithm or data structure to reduce the number of iterations."
 
     def __init__(self):
         super().__init__(id=self.id,
                          name=self.name, 
                          description=self.description, 
-                         penalty=self.penalty,
                          optimization=self.optimization)
     
     def should_apply(self, node) -> bool:
