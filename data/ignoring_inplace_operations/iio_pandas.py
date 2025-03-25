@@ -1,6 +1,6 @@
 import pandas as pd
 
-def process_pandas_inefficiently(input_data):
+def inefficient_inplace_pandas(input_data):
     # Input is a list or array-like to create a Pandas DataFrame
     df = pd.DataFrame({'values': input_data})
     
@@ -17,8 +17,3 @@ def process_pandas_inefficiently(input_data):
     df = df.div(2.0)  # Creates new DataFrame instead of in-place division
     
     return df['values']
-
-# Example usage
-data = [1.0, 2.0, 3.0]
-result = process_pandas_inefficiently(data)
-print(result)

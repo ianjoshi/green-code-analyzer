@@ -1,6 +1,6 @@
 import numpy as np
 
-def process_matrices(matrix_list_a, matrix_list_b):
+def inefficient_bmm_numpy(matrix_list_a, matrix_list_b):
     """
     Process pairs of matrices by multiplying them sequentially instead of batching.
     This method contains two separate violations of the BatchMatrixMultiplicationRule.
@@ -23,12 +23,3 @@ def process_matrices(matrix_list_a, matrix_list_b):
         results2.append(doubled)
     
     return results1, results2
-
-# Example usage
-if __name__ == "__main__":
-    # Sample 2x2 matrices for demonstration
-    a_matrices = [np.array([[1, 2], [3, 4]]) for _ in range(5)]
-    b_matrices = [np.array([[5, 6], [7, 8]]) for _ in range(5)]
-    r1, r2 = process_matrices(a_matrices, b_matrices)
-    print("Results1:", r1[0])
-    print("Results2:", r2[0])

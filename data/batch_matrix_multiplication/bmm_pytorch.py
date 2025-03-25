@@ -1,6 +1,6 @@
 import torch
 
-def process_tensor_matrices(tensor_list_a, tensor_list_b):
+def inefficient_bmm_pytorch(tensor_list_a, tensor_list_b):
     """
     Process pairs of tensor matrices by multiplying them sequentially instead of batching.
     This method contains two separate violations of the BatchMatrixMultiplicationRule for PyTorch.
@@ -23,12 +23,3 @@ def process_tensor_matrices(tensor_list_a, tensor_list_b):
         results2.append(doubled.squeeze(0))
     
     return results1, results2
-
-# Example usage
-if __name__ == "__main__":
-    # Sample 2x2 tensors for demonstration (batch dimension added/removed as needed)
-    a_tensors = [torch.tensor([[1.0, 2.0], [3.0, 4.0]]) for _ in range(5)]
-    b_tensors = [torch.tensor([[5.0, 6.0], [7.0, 8.0]]) for _ in range(5)]
-    r1, r2 = process_tensor_matrices(a_tensors, b_tensors)
-    print("Results1:", r1[0])
-    print("Results2:", r2[0])
