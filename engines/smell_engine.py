@@ -4,6 +4,7 @@ from engines.rule_engine import RuleEngine
 from models.smell import Smell
 from rules.basic.long_loop_rule import LongLoopRule
 from rules.chain_indexing_rule import ChainIndexingRule
+from rules.batch_matrix_multiplication_rule import BatchMatrixMultiplicationRule
 
 class SmellEngine:
     """
@@ -28,6 +29,7 @@ class SmellEngine:
 
         # Add data science rules
         self.engine.add_rule(ChainIndexingRule())
+        self.engine.add_rule(BatchMatrixMultiplicationRule())
 
     def collect(self) -> List[Smell]:
         """
