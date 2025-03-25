@@ -21,6 +21,10 @@
         
         "command": "greencodeanalyzer.runAnalyzer",
         "title": "GreenCodeAnalyzer: Run Analyzer"
+      },
+      {
+        "command": "greencodeanalyzer.clearGutters",
+        "title": "GreenCodeAnalyzer: Clear Gutters"
       }
     ],
     "menus": {
@@ -30,6 +34,12 @@
           "when": "editorLangId == python",
           "group": "navigation",
           "title": "Run GreenCodeAnalyzer"
+        },
+        {
+          "command": "greencodeanalyzer.clearGutters",
+          "when": "editorLangId == python",
+          "group": "navigation",
+          "title": "Clear GreenCodeAnalyzer Margins"
         }
       ]
     }
