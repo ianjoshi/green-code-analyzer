@@ -9,16 +9,16 @@ import ast
 from models.smell import Smell
 from rules.base_rule import BaseRule
 
-class BlockingDataLoadersRule(BaseRule):
+class InefficientDataLoaderDataTransferRule(BaseRule):
     """
-    Detects PyTorch DataLoader configurations that may cause GPU stalls due to blocking I/O
-    or insufficient concurrency.
+    Detects PyTorch DataLoader configurations that may cause inefficient data transfers
+    to GPU due to not using pinned memory.
     """
     
-    id = "blocking_dataloaders"
-    name = "Blocking Data Loaders"
-    description = "Prevent using data loading strategies that stall GPU execution (e.g., single-process or sequential data loading). If the DataLoader is set up without sufficient concurrency (num_workers=0) or uses blocking I/O, the GPU may remain idle while waiting for data. Asynchronous data loading keeps the GPU busy more consistently, reducing overall epoch time and energy."
-    optimization = "Use num_workers > 0 in DataLoader. For advanced scenarios, use background threads or prefetch queues."
+    id = "inefficient_data_transfer"
+    name = "Inefficient Data Transfer Configuration"
+    description = "Refrain from using standard (pageable) CPU memory for large data loads when transferring to GPU. When transferring data from CPU to GPU, pinned (page-locked) memory can speed up and streamline transfers in CUDA. Non-pinned memory can cause additional overhead, stalling the GPU."
+    optimization = "Enable pin_memory=True in the PyTorch DataLoader, which can significantly reduce latency for GPU-bound training."
     
     def __init__(self):
         super().__init__(id=self.id,
@@ -50,18 +50,18 @@ class BlockingDataLoadersRule(BaseRule):
             return []
 
         # Initialize flags for checking parameters
-        num_workers_found = False
-        num_workers_value = 0
+        pin_memory_found = False
+        pin_memory_value = False
         
         # Check all keyword arguments
         for keyword in node.keywords:
-            if keyword.arg == "num_workers":
-                num_workers_found = True
+            if keyword.arg == "pin_memory":
+                pin_memory_found = True
                 if isinstance(keyword.value, ast.Constant):
-                    num_workers_value = keyword.value.value
+                    pin_memory_value = keyword.value.value
         
-        # Create smell if num_workers is missing or zero
-        if not num_workers_found or num_workers_value == 0:
+        # Create smell if pin_memory is missing or False
+        if not pin_memory_found or not pin_memory_value:
             return [Smell(
                 rule_id=self.id,
                 rule_name=self.name,
@@ -100,7 +100,6 @@ class BlockingDataLoadersRule(BaseRule):
 
 if __name__ == "__main__":
     from engines.smell_engine import SmellEngine
-    engine = SmellEngine("data/blocking_data_loaders.py")
+    engine = SmellEngine("data/inefficient_data_loader_data_transfer.py")
     smells = engine.collect()
     print(smells)
-

@@ -17,6 +17,7 @@ from rules.recomputing_group_by_rule import RecomputingGroupByRule
 from rules.redundant_model_refitting_rule import RedundantModelRefittingRule
 from rules.data_parallelization_rule import DataParallelizationRule
 from rules.blocking_data_loaders_rule import BlockingDataLoadersRule
+from rules.inefficient_data_loader_data_transfer_rule import InefficientDataLoaderDataTransferRule
 
 class SmellEngine:
     """
@@ -52,7 +53,8 @@ class SmellEngine:
         self.engine.add_rule(RedundantModelRefittingRule())
         self.engine.add_rule(DataParallelizationRule())
         self.engine.add_rule(BlockingDataLoadersRule())
-
+        self.engine.add_rule(InefficientDataLoaderDataTransferRule())
+        
     def collect(self) -> List[Smell]:
         """
         Reads and parses the source file, then applies registered rules to detect code smells.
