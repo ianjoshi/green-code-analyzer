@@ -15,7 +15,7 @@ from rules.inefficient_iterrows_rule import InefficientIterationWithIterrows
 from rules.large_batch_size_causing_memory_swapping_rule import LargeBatchSizesCausingMemorySwapping
 from rules.recomputing_group_by_rule import RecomputingGroupByRule
 from rules.redundant_model_refitting_rule import RedundantModelRefittingRule
-
+from rules.data_parallelization_rule import DataParallelizationRule
 class SmellEngine:
     """
     An engine that analyzes a given Python source file and collects energy-related code smells, based on injected rules.
@@ -48,6 +48,7 @@ class SmellEngine:
         self.engine.add_rule(LargeBatchSizesCausingMemorySwapping())
         self.engine.add_rule(RecomputingGroupByRule())
         self.engine.add_rule(RedundantModelRefittingRule())
+        self.engine.add_rule(DataParallelizationRule())
 
     def collect(self) -> List[Smell]:
         """
