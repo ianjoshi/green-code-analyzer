@@ -5,6 +5,7 @@ from models.smell import Smell
 
 from rules.basic.long_loop_rule import LongLoopRule
 
+from rules.element_wise_operations_rule import ElementWiseOperartionsRule
 from rules.batch_matrix_multiplication_rule import BatchMatrixMultiplicationRule
 from rules.broadcasting_rule import BroadcastingRule
 from rules.chain_indexing_rule import ChainIndexingRule
@@ -38,6 +39,7 @@ class SmellEngine:
         self.engine.add_rule(LongLoopRule())
 
         # Add data science rules
+        self.engine.add_rule(ElementWiseOperartionsRule())
         self.engine.add_rule(BatchMatrixMultiplicationRule())
         self.engine.add_rule(BroadcastingRule())
         self.engine.add_rule(ChainIndexingRule())
