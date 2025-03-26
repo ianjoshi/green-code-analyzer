@@ -10,6 +10,7 @@ from rules.broadcasting_rule import BroadcastingRule
 from rules.chain_indexing_rule import ChainIndexingRule
 from rules.ignoring_inplace_operations_rule import IgnoringInplaceOperationsRule
 from rules.inefficient_iterrows_rule import InefficientIterationWithIterrows
+from rules.inefficient_df_joins_rule import InefficientDataFrameJoinsRule
 
 class SmellEngine:
     """
@@ -38,6 +39,7 @@ class SmellEngine:
         self.engine.add_rule(ChainIndexingRule())
         self.engine.add_rule(IgnoringInplaceOperationsRule())
         self.engine.add_rule(InefficientIterationWithIterrows())
+        self.engine.add_rule(InefficientDataFrameJoinsRule())
 
     def collect(self) -> List[Smell]:
         """

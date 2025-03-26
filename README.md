@@ -22,6 +22,7 @@ The tool currently detects these energy code smells:
 | `chain_indexing` | Chained Pandas DataFrame indexing operations | Extra intermediate objects creation |
 | `ignoring_inplace_ops` | Operations that could use in-place variants | Unnecessary memory allocations |
 | `inefficient_iterrows` | Inefficient row-by-row Pandas iterations | Python overhead for operations |
+| `inefficient_df_joins` | Repeated merges or merges without DataFrame indexing | High memory usage and increased computation time |
 
 ## Getting Started
 
