@@ -23,6 +23,7 @@ The tool currently detects these energy code smells:
 | `ignoring_inplace_ops` | Operations that could use in-place variants | Unnecessary memory allocations |
 | `inefficient_iterrows` | Inefficient row-by-row Pandas iterations | Python overhead for operations |
 | `inefficient_df_joins` | Repeated merges or merges without DataFrame indexing | High memory usage and increased computation time |
+| `excessive_training` | Training loops without early stopping mechanisms | Wasted computation after model convergence |
 
 ## Getting Started
 
