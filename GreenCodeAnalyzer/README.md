@@ -64,6 +64,10 @@ To clear annotations, run the command **GreenCodeAnalyzer: Clear Gutters** from 
 - Support for Python data science and machine learning code analysis
 - Visual indicators for energy code smells in the editor
 
+### 1.0.0
+- Expand to 20 energy efficiency rules
+- Bug fixes
+
 <!-- --- -->
 
 ## How It Works
