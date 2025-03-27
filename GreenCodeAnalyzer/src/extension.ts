@@ -40,15 +40,23 @@ export function activate(context: vscode.ExtensionContext) {
 
       const filePath = editor.document.fileName;
 
-      fs.readFile(filePath, "utf8", (err, data) => {
-        if (err) {
-          vscode.window.showErrorMessage("Error reading the file.");
-          return;
-        }
+      // Check if the file exists
+      if (!fs.existsSync(filePath)) {
+        vscode.window.showErrorMessage(`File not found: ${filePath}`);
+        return;
+      }
 
-        // Run the analyzer
-        runAnalyzer(filePath, data, context);
-      });
+      // Get the workspace folder
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (!workspaceFolder) {
+        vscode.window.showErrorMessage("Workspace not found.");
+        return;
+      }
+
+      const projectRoot = path.dirname(workspaceFolder);
+      
+      // Run the main script directly with the file path
+      runMainScript(projectRoot, filePath, context);
     }
   );
 
@@ -72,41 +80,8 @@ function clearDecorations() {
   activeDecorationTypes = [];
 }
 
-// First, take the file being edited in the extension and save it to the data folder in the project repository
-function runAnalyzer(
-  filePath: string,
-  fileContent: string,
-  context: vscode.ExtensionContext
-) {
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  if (!workspaceFolder) {
-    vscode.window.showErrorMessage("Workspace not found.");
-    return;
-  }
-
-  const projectRoot = path.dirname(workspaceFolder);
-  const dataFolder = path.join(projectRoot, "data");
-
-  if (!fs.existsSync(dataFolder)) {
-    fs.mkdirSync(dataFolder, { recursive: true });
-  }
-
-  // Save the file to the data folder
-  const fileName = path.basename(filePath);
-  const destinationPath = path.join(dataFolder, fileName);
-
-  fs.writeFile(destinationPath, fileContent, "utf8", (err) => {
-    if (err) {
-      vscode.window.showErrorMessage(`Failed to save file: ${err.message}`);
-    } else {
-      // Run the main script
-      runMainScript(projectRoot, context);
-    }
-  });
-}
-
 // Run the main script from the project repository to analyze the file
-function runMainScript(projectRoot: string, context: vscode.ExtensionContext) {
+function runMainScript(projectRoot: string, filePath: string, context: vscode.ExtensionContext) {
   const mainScriptPath = path.join(projectRoot, "main.py");
 
   if (!fs.existsSync(mainScriptPath)) {
@@ -114,14 +89,6 @@ function runMainScript(projectRoot: string, context: vscode.ExtensionContext) {
     return;
   }
 
-  // Get the current active file path
-  const editor = vscode.window.activeTextEditor;
-  if (!editor) {
-    vscode.window.showErrorMessage("No active file found.");
-    return;
-  }
-
-  const filePath = editor.document.fileName;
   const pythonProcess = childProcess.spawn("python", [mainScriptPath, filePath], {
     cwd: projectRoot,
   });
