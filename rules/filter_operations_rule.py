@@ -10,7 +10,7 @@ class FilterOperationsRule(BaseRule):
     id = "filter_operations"
     name = "Inefficient Filter Operations"
     description = "Using loops for filtering elements instead of vectorized operations causes unnecessary iterations and is energy-intensive."
-    optimization = "Replace with vectorized operations (e.g., np.where or boolean indexing tensor[tensor > 0.5], df[df['values'] > 0.5])."   
+    optimization = "Replace with boolean indexing (array[array > 0.5], tensor[tensor > 0.5], df[df['values'] > 0.5]) or tensor masking."   
 
     def __init__(self):
         super().__init__(id=self.id,
