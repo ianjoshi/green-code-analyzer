@@ -114,7 +114,15 @@ function runMainScript(projectRoot: string, context: vscode.ExtensionContext) {
     return;
   }
 
-  const pythonProcess = childProcess.spawn("python", [mainScriptPath], {
+  // Get the current active file path
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    vscode.window.showErrorMessage("No active file found.");
+    return;
+  }
+
+  const filePath = editor.document.fileName;
+  const pythonProcess = childProcess.spawn("python", [mainScriptPath, filePath], {
     cwd: projectRoot,
   });
 
