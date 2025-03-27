@@ -13,9 +13,14 @@ const nutriScoreColors: { [key: string]: string } = {
   NaN: "rgba(255, 123, 0, 0.6)",
 };
 
-let lineMessages: { [key: number]: string } = {};
 // Add a variable to store active decoration types
 let activeDecorationTypes: vscode.TextEditorDecorationType[] = [];
+
+// Track processed lines to avoid duplicate hover messages
+interface LineMessageInfo {
+  messages: vscode.MarkdownString[];
+  nutriScore: string;
+}
 
 export function activate(context: vscode.ExtensionContext) {
   console.log("GreenCodeAnalyzer is now active!");
@@ -35,15 +40,18 @@ export function activate(context: vscode.ExtensionContext) {
 
       const filePath = editor.document.fileName;
 
-      fs.readFile(filePath, "utf8", (err, data) => {
-        if (err) {
-          vscode.window.showErrorMessage("Error reading the file.");
-          return;
-        }
+      // Check if the file exists
+      if (!fs.existsSync(filePath)) {
+        vscode.window.showErrorMessage(`File not found: ${filePath}`);
+        return;
+      }
 
-        // Run the analyzer
-        runAnalyzer(filePath, data, context);
-      });
+      // Use extension path instead of workspace folder
+      // This ensures the extension works in any workspace
+      const extensionPath = context.extensionPath;
+      
+      // Run the main script directly with the file path
+      runMainScript(extensionPath, filePath, context);
     }
   );
 
@@ -65,59 +73,33 @@ function clearDecorations() {
     decorationType.dispose();
   });
   activeDecorationTypes = [];
-  lineMessages = {};
 }
 
-// First, take the file being edited in the extension and save it to the data folder in the project repository
-function runAnalyzer(
-  filePath: string,
-  fileContent: string,
-  context: vscode.ExtensionContext
-) {
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  if (!workspaceFolder) {
-    vscode.window.showErrorMessage("Workspace not found.");
-    return;
-  }
-
-  const projectRoot = path.dirname(workspaceFolder);
-  const dataFolder = path.join(projectRoot, "data");
-
-  if (!fs.existsSync(dataFolder)) {
-    fs.mkdirSync(dataFolder, { recursive: true });
-  }
-
-  // Save the file to the data folder
-  const fileName = path.basename(filePath);
-  const destinationPath = path.join(dataFolder, fileName);
-
-  fs.writeFile(destinationPath, fileContent, "utf8", (err) => {
-    if (err) {
-      vscode.window.showErrorMessage(`Failed to save file: ${err.message}`);
-    } else {
-      // Run the main script
-      runMainScript(projectRoot, context);
-    }
-  });
-}
-
-// Run the main script from the project repository to analyze the file
-function runMainScript(projectRoot: string, context: vscode.ExtensionContext) {
-  const mainScriptPath = path.join(projectRoot, "main.py");
+// Run the main script from the extension directory to analyze the file
+function runMainScript(extensionPath: string, filePath: string, context: vscode.ExtensionContext) {
+  // Look for main.py in the extension's src directory
+  const mainScriptPath = path.join(extensionPath, "main.py");
 
   if (!fs.existsSync(mainScriptPath)) {
     vscode.window.showErrorMessage(`main.py not found at ${mainScriptPath}`);
     return;
   }
 
-  const pythonProcess = childProcess.spawn("python", [mainScriptPath], {
-    cwd: projectRoot,
+  // Run the Python process with the extension directory as CWD
+  const pythonProcess = childProcess.spawn("python", [mainScriptPath, filePath], {
+    cwd: path.dirname(mainScriptPath), // Use the src directory as working directory
   });
 
-  // After main.py is run, we will get the output from the energy analyzer.
-  // We call the processAnalyzerOutput function to process this output.
+  let stdoutData = "";
   pythonProcess.stdout.on("data", (data) => {
-    processAnalyzerOutput(data.toString(), context);
+    stdoutData += data.toString();
+  });
+
+  // Process all output when the process ends
+  pythonProcess.on("close", () => {
+    if (stdoutData) {
+      processAnalyzerOutput(stdoutData, context);
+    }
   });
 
   pythonProcess.stderr.on("data", (data) => {
@@ -135,19 +117,14 @@ function processAnalyzerOutput(
     return;
   }
 
-  // Use regex to parse the output
+  // Regular expression to match the output from the analyzer
   const regex =
-    /Rule ID: (.+?), Rule Name: (.+?), Description: (.+?)(?:, Penalty: (.+?))?, Optimization: (.+?), Affected Line\(s\): Line (\d+)/g;
-  const decorationsMap: { [key: string]: vscode.DecorationOptions[] } = {
-    A: [],
-    B: [],
-    C: [],
-    D: [],
-    E: [],
-    NaN: [],
-  };
+    /Rule ID: (.+?), Rule Name: (.+?), Description: (.+?)(?:, Penalty: (.+?))?, Optimization: (.+?), Affected Line\(s\): (?:Line (\d+)|Lines (\d+)-(\d+))/g;
+  
+  // Keep track of line info to avoid duplicate hover messages
+  const lineInfoMap: Map<number, LineMessageInfo> = new Map();
 
-  // Clear previous decorations and messages
+  // Clear previous decorations
   clearDecorations();
 
   let match;
@@ -156,8 +133,18 @@ function processAnalyzerOutput(
     const description = match[3];
     const penalty = parseFloat(match[4]);
     const optimization = match[5];
-    const lineNumber = parseInt(match[6]) - 1; // Turn into 0-indexed line number
-    const nutriScore = getNutriScore(penalty); // Get NutriScore level based on penalty
+    
+    // Get the line number(s) - handle both single line and range formats
+    let startLine, endLine;
+    if (match[6]) {
+      startLine = parseInt(match[6]) - 1;
+      endLine = startLine;
+    } else {
+      startLine = parseInt(match[7]) - 1;
+      endLine = parseInt(match[8]) - 1;
+    }
+    
+    const nutriScore = getNutriScore(penalty);
 
     // Create a hover message that includes the rule details
     const hoverMessage = new vscode.MarkdownString();
@@ -174,46 +161,106 @@ function processAnalyzerOutput(
     }
     hoverMessage.appendMarkdown(`**Optimization**: ${optimization}`);
 
-    // Defines how the editor should visually decorate a part of the text
-    const decoration: vscode.DecorationOptions = {
-      // Extend the range to cover the entire line for hover purposes
-      range: new vscode.Range(
-        lineNumber, 
-        0, 
-        lineNumber, 
-        editor.document.lineAt(lineNumber).text.length
-      ),
-      hoverMessage: hoverMessage
-    };
-
-    // Add the decoration to the map and create the message to be displayed when this respective line is clicked
-    decorationsMap[nutriScore].push(decoration);
-    lineMessages[lineNumber] = `${ruleName}: ${description}. Optimization: ${optimization}`;
+    // Apply decorations to all lines in the range
+    for (let lineNumber = startLine; lineNumber <= endLine; lineNumber++) {
+      try {
+        // Make sure the line exists in the document
+        if (lineNumber >= 0 && lineNumber < editor.document.lineCount) {
+          // Get or create line info
+          if (!lineInfoMap.has(lineNumber)) {
+            lineInfoMap.set(lineNumber, {
+              messages: [hoverMessage],
+              nutriScore: nutriScore
+            });
+          } else {
+            // Check if this exact message is already in the array to avoid duplicates
+            const lineInfo = lineInfoMap.get(lineNumber)!;
+            const isDuplicate = lineInfo.messages.some(msg => 
+              msg.value === hoverMessage.value
+            );
+            
+            if (!isDuplicate) {
+              lineInfo.messages.push(hoverMessage);
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Error processing line ${lineNumber}:`, error);
+      }
+    }
   }
 
   // Create decoration types dynamically for each NutriScore level
-  const decorationTypes: { [key: string]: vscode.TextEditorDecorationType } =
-    {};
+  const decorationTypes: { [key: string]: vscode.TextEditorDecorationType } = {};
   for (const [score, color] of Object.entries(nutriScoreColors)) {
     decorationTypes[score] = vscode.window.createTextEditorDecorationType({
-    // Remove the backgroundColor property to avoid highlighting the entire line
-    isWholeLine: false, // Change to false to not highlight the whole line
-    gutterIconPath: context.asAbsolutePath(path.join('resources', `nutriscore-${score.toLowerCase()}.svg`)),
-    gutterIconSize: 'contain',
-    // Alternatively, use a colored bar in the margin
-    borderColor: color,
-    borderWidth: '0 0 0 3px', // Left border only
-    borderStyle: 'solid',
-    // Keep the overview ruler indicator
-    overviewRulerColor: color,
-    overviewRulerLane: vscode.OverviewRulerLane.Right,
-  });
+      isWholeLine: false,
+      gutterIconSize: 'contain',
+      borderColor: color,
+      borderWidth: '0 0 0 3px',
+      borderStyle: 'solid',
+      overviewRulerColor: color,
+      overviewRulerLane: vscode.OverviewRulerLane.Right,
+    });
 
     // Store the decoration type in our active decorations array
     activeDecorationTypes.push(decorationTypes[score]);
+  }
 
-    // Apply decorations to the editor and keep the message to show when the line is clicked
-    editor.setDecorations(decorationTypes[score], decorationsMap[score]);
+  // Process line info and apply decorations by NutriScore
+  const decorationsMap: { [key: string]: vscode.DecorationOptions[] } = {
+    A: [], B: [], C: [], D: [], E: [], NaN: []
+  };
+
+  // Convert the line info map to decoration options
+  lineInfoMap.forEach((info, lineNumber) => {
+    try {
+      const line = editor.document.lineAt(lineNumber);
+      const range = new vscode.Range(
+        lineNumber, 0, 
+        lineNumber, line.text.length
+      );
+
+      // If we have multiple messages, combine them
+      let combinedMessage: vscode.MarkdownString;
+      if (info.messages.length === 1) {
+        combinedMessage = info.messages[0];
+      } else {
+        combinedMessage = new vscode.MarkdownString();
+        combinedMessage.appendMarkdown(`## GreenCodeAnalyzer\n`);
+        combinedMessage.appendMarkdown(`---\n`);
+        
+        // Add messages with separators between them
+        for (let i = 0; i < info.messages.length; i++) {
+          const msgContent = info.messages[i].value;
+          // Strip the header from all but the first message
+          const contentWithoutHeader = msgContent.replace(/^## GreenCodeAnalyzer\n---\n/, '');
+          combinedMessage.appendMarkdown(contentWithoutHeader);
+          
+          // Add separator between messages (except after the last one)
+          if (i < info.messages.length - 1) {
+            combinedMessage.appendMarkdown(`\n\n---\n\n`);
+          }
+        }
+      }
+
+      const decoration: vscode.DecorationOptions = {
+        range: range,
+        hoverMessage: combinedMessage
+      };
+
+      // Add to decorations map based on severity
+      decorationsMap[info.nutriScore].push(decoration);
+    } catch (error) {
+      console.error(`Error creating decoration for line ${lineNumber}:`, error);
+    }
+  });
+
+  // Apply all decorations
+  for (const [score, decorations] of Object.entries(decorationsMap)) {
+    if (decorations.length > 0) {
+      editor.setDecorations(decorationTypes[score], decorations);
+    }
   }
 }
 

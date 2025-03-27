@@ -18,6 +18,8 @@ from rules.inefficient_iterrows_rule import InefficientIterationWithIterrows
 from rules.large_batch_size_causing_memory_swapping_rule import LargeBatchSizesCausingMemorySwapping
 from rules.recomputing_group_by_rule import RecomputingGroupByRule
 from rules.redundant_model_refitting_rule import RedundantModelRefittingRule
+from rules.inefficient_df_joins_rule import InefficientDataFrameJoinsRule
+from rules.excessive_training_rule import ExcessiveTrainingRule
 
 class SmellEngine:
     """
@@ -53,6 +55,8 @@ class SmellEngine:
         self.engine.add_rule(LargeBatchSizesCausingMemorySwapping())
         self.engine.add_rule(RecomputingGroupByRule())
         self.engine.add_rule(RedundantModelRefittingRule())
+        self.engine.add_rule(InefficientDataFrameJoinsRule())
+        self.engine.add_rule(ExcessiveTrainingRule())
 
     def collect(self) -> List[Smell]:
         """

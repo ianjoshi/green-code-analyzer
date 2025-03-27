@@ -1,8 +1,10 @@
 {
-  "name": "helloworld",
+  "name": "GreenCodeAnalyzer",
   "displayName": "GreenCodeAnalyzer",
   "description": "",
-  "version": "0.0.1",
+  "version": "0.0.4",
+  "publisher": "KevinHoxha",
+  "icon": "green_code_analyzer_icon.png",
   "engines": {
     "vscode": "^1.98.0"
   },
@@ -14,11 +16,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "helloworld.helloWorld",
-        "title": "Hello World"
-      },
-      {
-        
         "command": "greencodeanalyzer.runAnalyzer",
         "title": "GreenCodeAnalyzer: Run Analyzer"
       },
@@ -39,7 +36,7 @@
           "command": "greencodeanalyzer.clearGutters",
           "when": "editorLangId == python",
           "group": "navigation",
-          "title": "Clear GreenCodeAnalyzer Margins"
+          "title": "Clear GreenCodeAnalyzer Gutters"
         }
       ]
     }
