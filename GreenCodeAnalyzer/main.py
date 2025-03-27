@@ -7,7 +7,8 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         file_path = sys.argv[1]
     else:
-        file_path = "data/test.py"
+        # Throw an error if no file path is provided
+        raise ValueError("Please provide a file path as an argument.")
         
     collector = SmellEngine(file_path)
     smells_dict = collector.collect()
