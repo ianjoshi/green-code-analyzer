@@ -1,71 +1,59 @@
-# helloworld README
+# GreenCodeAnalyzer
 
-This is the README for your extension "helloworld". After writing up a brief description, we recommend including the following sections.
+**GreenCodeAnalyzer** is a VS Code extension that performs static analysis on Python code to identify energy-inefficient patterns, helping developers write more sustainable and environmentally friendly code. The tool particularly focuses on inefficiencies in data science and machine learning code.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **Static Energy Analysis**: Analyzes Python code without execution to detect potential energy hotspots
+- **Visual Code Annotations**: Provides visual feedback with highlighted energy smells in the editor
+- **Optimization Suggestions**: Offers specific recommendations to make your code more energy-efficient
 
-For example if there is an image subfolder under your extension project workspace:
 
-\!\[feature X\]\(images/feature-x.png\)
+### Supported Rules
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+The extension currently detects these energy code smells:
+
+| Rule    | Description | Impact |
+|---------|-------------|--------|
+| `long_loop` | Long-running loops with excessive iterations | High CPU usage over time |
+| `batch_matrix_mult` | Sequential matrix multiplications instead of batched operations | Missed hardware acceleration opportunities |
+| `broadcasting` | Inefficient tensor operations that could use broadcasting | Unnecessary memory allocations |
+| `chain_indexing` | Chained Pandas DataFrame indexing operations | Extra intermediate objects creation |
+| `ignoring_inplace_ops` | Operations that could use in-place variants | Unnecessary memory allocations |
+| `inefficient_iterrows` | Inefficient row-by-row Pandas iterations | Python overhead for operations |
+| `inefficient_df_joins` | Repeated merges or merges without DataFrame indexing | High memory usage and increased computation time |
+| `excessive_training` | Training loops without early stopping mechanisms | Wasted computation after model convergence |
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- Python 3.10 or higher
+- VS Code
 
-## Extension Settings
+## Usage
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+1. Open a Python file in VS Code
+2. Run the command **GreenCodeAnalyzer: Run Analyzer** from the Command Palette (`Ctrl+Shift+P`)
+3. The tool will analyze your code and display results with:
+   - Colored gutter icons indicating energy smells based on severity
+   - Detailed hover information with rule descriptions and optimization suggestions
 
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+To clear annotations, run the command **GreenCodeAnalyzer: Clear Gutters** from the Command Palette.
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- The extension only works with Python files
+- Some rules may produce false positives depending on the context of your code
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
+### 0.0.1
 
-### 1.0.0
+- Initial release with 8 energy efficiency rules
+- Support for Python data science and machine learning code analysis
+- Visual indicators for energy code smells in the editor
 
-Initial release of ...
+<!-- --- -->
 
-### 1.0.1
+## How It Works
 
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+GreenCodeAnalyzer parses Python code into an Abstract Syntax Tree (AST) and applies predefined rules to identify inefficient patterns. The results are then visualized in the editor with colored indicators and hover information containing optimization suggestions.
