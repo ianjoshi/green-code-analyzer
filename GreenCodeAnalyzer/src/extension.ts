@@ -46,17 +46,12 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      // Get the workspace folder
-      const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-      if (!workspaceFolder) {
-        vscode.window.showErrorMessage("Workspace not found.");
-        return;
-      }
-
-      const projectRoot = path.dirname(workspaceFolder);
+      // Use extension path instead of workspace folder
+      // This ensures the extension works in any workspace
+      const extensionPath = context.extensionPath;
       
       // Run the main script directly with the file path
-      runMainScript(projectRoot, filePath, context);
+      runMainScript(extensionPath, filePath, context);
     }
   );
 
@@ -80,23 +75,31 @@ function clearDecorations() {
   activeDecorationTypes = [];
 }
 
-// Run the main script from the project repository to analyze the file
-function runMainScript(projectRoot: string, filePath: string, context: vscode.ExtensionContext) {
-  const mainScriptPath = path.join(projectRoot, "main.py");
+// Run the main script from the extension directory to analyze the file
+function runMainScript(extensionPath: string, filePath: string, context: vscode.ExtensionContext) {
+  // Look for main.py in the extension's src directory
+  const mainScriptPath = path.join(extensionPath, "main.py");
 
   if (!fs.existsSync(mainScriptPath)) {
     vscode.window.showErrorMessage(`main.py not found at ${mainScriptPath}`);
     return;
   }
 
+  // Run the Python process with the extension directory as CWD
   const pythonProcess = childProcess.spawn("python", [mainScriptPath, filePath], {
-    cwd: projectRoot,
+    cwd: path.dirname(mainScriptPath), // Use the src directory as working directory
   });
 
-  // After main.py is run, we will get the output from the energy analyzer.
-  // We call the processAnalyzerOutput function to process this output.
+  let stdoutData = "";
   pythonProcess.stdout.on("data", (data) => {
-    processAnalyzerOutput(data.toString(), context);
+    stdoutData += data.toString();
+  });
+
+  // Process all output when the process ends
+  pythonProcess.on("close", () => {
+    if (stdoutData) {
+      processAnalyzerOutput(stdoutData, context);
+    }
   });
 
   pythonProcess.stderr.on("data", (data) => {
@@ -192,7 +195,6 @@ function processAnalyzerOutput(
   for (const [score, color] of Object.entries(nutriScoreColors)) {
     decorationTypes[score] = vscode.window.createTextEditorDecorationType({
       isWholeLine: false,
-      gutterIconPath: context.asAbsolutePath(path.join('resources', `nutriscore-${score.toLowerCase()}.svg`)),
       gutterIconSize: 'contain',
       borderColor: color,
       borderWidth: '0 0 0 3px',
