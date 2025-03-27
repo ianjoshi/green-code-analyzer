@@ -3,6 +3,10 @@ from typing import List
 from engines.rule_engine import RuleEngine
 from models.smell import Smell
 
+from rules.element_wise_operations_rule import ElementWiseOperartionsRule
+from rules.reduction_operations_rule import ReductionOperationsRule
+from rules.filter_operations_rule import FilterOperationsRule
+from rules.conditional_operations_rules import ConditionalOperationsRule
 from rules.batch_matrix_multiplication_rule import BatchMatrixMultiplicationRule
 from rules.broadcasting_rule import BroadcastingRule
 from rules.calculating_gradients_rule import CalculatingGradientsRule
@@ -34,6 +38,10 @@ class SmellEngine:
         self.engine = RuleEngine()
 
         # Add rules
+        self.engine.add_rule(ElementWiseOperartionsRule())
+        self.engine.add_rule(ReductionOperationsRule())
+        self.engine.add_rule(FilterOperationsRule())
+        self.engine.add_rule(ConditionalOperationsRule())
         self.engine.add_rule(BatchMatrixMultiplicationRule())
         self.engine.add_rule(BroadcastingRule())
         self.engine.add_rule(CalculatingGradientsRule())
