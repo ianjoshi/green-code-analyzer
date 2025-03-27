@@ -18,6 +18,9 @@ from rules.inefficient_iterrows_rule import InefficientIterationWithIterrows
 from rules.large_batch_size_causing_memory_swapping_rule import LargeBatchSizesCausingMemorySwapping
 from rules.recomputing_group_by_rule import RecomputingGroupByRule
 from rules.redundant_model_refitting_rule import RedundantModelRefittingRule
+from rules.data_parallelization_rule import DataParallelizationRule
+from rules.blocking_data_loaders_rule import BlockingDataLoadersRule
+from rules.inefficient_data_loader_data_transfer_rule import InefficientDataLoaderDataTransferRule
 from rules.inefficient_df_joins_rule import InefficientDataFrameJoinsRule
 from rules.excessive_training_rule import ExcessiveTrainingRule
 
@@ -55,6 +58,9 @@ class SmellEngine:
         self.engine.add_rule(LargeBatchSizesCausingMemorySwapping())
         self.engine.add_rule(RecomputingGroupByRule())
         self.engine.add_rule(RedundantModelRefittingRule())
+        self.engine.add_rule(DataParallelizationRule())
+        self.engine.add_rule(BlockingDataLoadersRule())
+        self.engine.add_rule(InefficientDataLoaderDataTransferRule())
         self.engine.add_rule(InefficientDataFrameJoinsRule())
         self.engine.add_rule(ExcessiveTrainingRule())
 

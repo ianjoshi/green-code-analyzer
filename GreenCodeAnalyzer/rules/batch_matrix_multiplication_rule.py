@@ -26,7 +26,7 @@ class BatchMatrixMultiplicationRule(BaseRule):
                 start_line=call.lineno
             ))
         return smells
-
+    
     def _detect_matrix_multiplications(self, nodes: list[ast.AST]) -> list[ast.Call]:
         """
         Detects matrix multiplication calls, including those within expressions.
