@@ -3,8 +3,6 @@ from typing import List
 from engines.rule_engine import RuleEngine
 from models.smell import Smell
 
-from rules.basic.long_loop_rule import LongLoopRule
-
 from rules.element_wise_operations_rule import ElementWiseOperartionsRule
 from rules.reduction_operations_rule import ReductionOperationsRule
 from rules.filter_operations_rule import FilterOperationsRule
