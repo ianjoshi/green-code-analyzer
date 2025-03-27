@@ -26,29 +26,53 @@ class InefficientIterationWithIterrows(BaseRule):
 
     def apply_rule(self, node: ast.AST) -> list[Smell]:
         """
-        Checks if the For loop uses Pandas iterrows and flags it as an energy smell.
+        Checks if the For loop uses Pandas iterrows for inefficient row-by-row data manipulation.
         """
         smells = []
         
-        # Check if the loop's iterator is a method call
-        if isinstance(node.iter, ast.Call):
-            call = node.iter
-            
-            # Check if the function being called is an attribute (e.g., df.iterrows)
-            if isinstance(call.func, ast.Attribute):
-                attr = call.func
-                
-                # Look for 'iterrows' as the attribute name
-                if attr.attr == "iterrows":
-                    # Verify it's being called (has parentheses)
-                    if isinstance(attr.value, (ast.Name, ast.Attribute)):
-                        smells.append(Smell(
-                            rule_id=self.id,
-                            rule_name=self.name,
-                            description=self.description,
-                            penalty=self.penalty,
-                            optimization=self.optimization,
-                            start_line=node.lineno
-                        ))
+        # Check if the loop's iterator is a method call to iterrows
+        if isinstance(node.iter, ast.Call) and isinstance(node.iter.func, ast.Attribute):
+            attr = node.iter.func
+            if attr.attr == "iterrows" and isinstance(attr.value, (ast.Name, ast.Attribute)):
+                # Analyze the loop body for inefficient manipulation patterns
+                for stmt in node.body:
+                    # Look for assignments, arithmetic, or accumulator patterns involving row variables
+                    if isinstance(stmt, (ast.Assign, ast.AugAssign)):
+                        # Check if the statement uses the row variable
+                        if len(node.target.elts) >= 2:  # e.g., for index, row in ...
+                            row_var = node.target.elts[1]  # Typically 'row'
+                            if self._uses_variable(stmt, row_var.id):
+                                smells.append(Smell(
+                                    rule_id=self.id,
+                                    rule_name=self.name,
+                                    description=self.description,
+                                    penalty=self.penalty,
+                                    optimization=self.optimization,
+                                    start_line=node.lineno
+                                ))
+                                break
+                    # Check for function calls that might manipulate row data
+                    elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call):
+                        if len(node.target.elts) >= 2:
+                            row_var = node.target.elts[1]
+                            if self._uses_variable(stmt.value, row_var.id):
+                                smells.append(Smell(
+                                    rule_id=self.id,
+                                    rule_name=self.name,
+                                    description=self.description,
+                                    penalty=self.penalty,
+                                    optimization=self.optimization,
+                                    start_line=node.lineno
+                                ))
+                                break
         
         return smells
+
+    def _uses_variable(self, node: ast.AST, var_name: str) -> bool:
+        """
+        Helper method to check if a given AST node uses a specific variable name.
+        """
+        for child in ast.walk(node):
+            if isinstance(child, ast.Name) and child.id == var_name:
+                return True
+        return False

@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-def process_tensorflow_inefficiently(input_data):
+def inefficient_inplace_tensorflow(input_data):
     # Input is a list or array-like to create a TensorFlow tensor
     tensor = tf.constant(input_data, dtype=tf.float32)
     
@@ -17,8 +17,3 @@ def process_tensorflow_inefficiently(input_data):
     tensor = tf.divide(tensor, 2.0)  # New tensor instead of in-place division
     
     return tensor
-
-# Example usage
-data = [1.0, 2.0, 3.0]
-result = process_tensorflow_inefficiently(data)
-print(result)

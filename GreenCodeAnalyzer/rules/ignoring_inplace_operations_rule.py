@@ -28,7 +28,7 @@ class IgnoringInplaceOperationsRule(BaseRule):
         """
         Checks if an operation in PyTorch, TensorFlow, NumPy, or Pandas lacks an in-place variant.
         """
-        # Library-specific inplaceable operations
+        # Library-specific inplaceable operations (non-in-place names)
         library_ops = {
             "torch": {"add", "mul", "div", "sub", "relu", "clamp", "sigmoid", "tanh"},
             "tf": {"add", "multiply", "divide", "subtract"},
@@ -36,17 +36,33 @@ class IgnoringInplaceOperationsRule(BaseRule):
             "pandas": {"add", "mul", "div", "sub"}
         }
         
-        # Extract the function name and its parent
         func_name = node.func.attr
         parent = node.func.value
-        
-        # Track if a smell has already been created to prevent duplicates
-        smell_created = False
         smells = []
         
+        # Check each library, but only create one smell per call
         for lib, ops in library_ops.items():
-            if func_name in ops and not smell_created:
-                # Verify library context (e.g., torch.add, tf.add, np.add, df.add)
+            # For PyTorch, also consider in-place variants (e.g., add_)
+            if lib == "torch" and (func_name in ops or func_name.rstrip("_") in ops):
+                is_library_call = (
+                    (isinstance(parent, ast.Name) and parent.id == lib) or
+                    (isinstance(parent, ast.Attribute) and lib in str(ast.unparse(parent))) or
+                    isinstance(parent, ast.Name)
+                )
+                
+                if is_library_call and not func_name.endswith("_"):
+                    smells.append(Smell(
+                        rule_id=self.id,
+                        rule_name=self.name,
+                        description=self.description,
+                        penalty=self.penalty,
+                        optimization=self.optimization,
+                        start_line=node.lineno
+                    ))
+                    break  # Stop after first match to avoid duplicates
+            
+            # For other libraries
+            elif func_name in ops:
                 is_library_call = (
                     (isinstance(parent, ast.Name) and parent.id == lib) or
                     (isinstance(parent, ast.Attribute) and lib in str(ast.unparse(parent))) or
@@ -54,23 +70,40 @@ class IgnoringInplaceOperationsRule(BaseRule):
                 )
                 
                 if is_library_call:
-                    # For Pandas, check if inplace=True is missing
-                    if lib == "pandas" and not any(
-                        isinstance(kw, ast.keyword) and kw.arg == "inplace" and isinstance(kw.value, ast.Constant) and kw.value.value
-                        for kw in node.keywords
-                    ):
-                        smells.append(Smell(
-                            rule_id=self.id,
-                            rule_name=self.name,
-                            description=self.description,
-                            penalty=self.penalty,
-                            optimization=self.optimization,
-                            start_line=node.lineno
-                        ))
-                        smell_created = True
+                    if lib == "pandas":
+                        # Check for inplace=True
+                        if not any(
+                            isinstance(kw, ast.keyword) and kw.arg == "inplace" and isinstance(kw.value, ast.Constant) and kw.value.value
+                            for kw in node.keywords
+                        ):
+                            smells.append(Smell(
+                                rule_id=self.id,
+                                rule_name=self.name,
+                                description=self.description,
+                                penalty=self.penalty,
+                                optimization=self.optimization,
+                                start_line=node.lineno
+                            ))
+                            break
                     
-                    # For other libraries, flag non-in-place ops directly
-                    elif lib != "pandas":
+                    elif lib == "np":
+                        # Check for out= parameter
+                        if not any(
+                            isinstance(kw, ast.keyword) and kw.arg == "out"
+                            for kw in node.keywords
+                        ):
+                            smells.append(Smell(
+                                rule_id=self.id,
+                                rule_name=self.name,
+                                description=self.description,
+                                penalty=self.penalty,
+                                optimization=self.optimization,
+                                start_line=node.lineno
+                            ))
+                            break
+                    
+                    elif lib == "tf":
+                        # Flag TensorFlow directly (no direct in-place equivalent)
                         smells.append(Smell(
                             rule_id=self.id,
                             rule_name=self.name,
@@ -79,6 +112,6 @@ class IgnoringInplaceOperationsRule(BaseRule):
                             optimization=self.optimization,
                             start_line=node.lineno
                         ))
-                        smell_created = True
+                        break
         
         return smells

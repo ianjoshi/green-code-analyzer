@@ -1,8 +1,8 @@
 import pandas as pd
 
-def process_sales_data(sales_file: str, inventory_file: str) -> dict:
+def inefficient_iterrows(sales_file: str, inventory_file: str) -> dict:
     """
-    Process sales and inventory data to calculate profits and update stock levels.
+    Process sales and inventory data to calculate profits and update stock levels using iterrows.
     Returns a dictionary with total profit and remaining items.
     """
     # Load data into DataFrames
@@ -21,7 +21,7 @@ def process_sales_data(sales_file: str, inventory_file: str) -> dict:
         total_profit += profit
     
     # Violation 2: Using iterrows to update inventory levels row-by-row
-    for idx, row in inventory_df.iterrows():
+    for _, row in inventory_df.iterrows():
         item_id = row['item_id']
         current_stock = row['stock']
         if item_id in remaining_items:
@@ -30,9 +30,3 @@ def process_sales_data(sales_file: str, inventory_file: str) -> dict:
             remaining_items[item_id] = current_stock
     
     return {"total_profit": total_profit, "remaining_items": remaining_items}
-
-# Example usage
-if __name__ == "__main__":
-    result = process_sales_data("sales.csv", "inventory.csv")
-    print(f"Total Profit: {result['total_profit']}")
-    print(f"Remaining Items: {result['remaining_items']}")

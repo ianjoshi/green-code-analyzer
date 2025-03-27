@@ -1,6 +1,6 @@
 import torch
 
-def process_tensor_inefficiently(input_data):
+def inefficient_inplace_pytorch(input_data):
     # Input is a list or array-like to create a PyTorch tensor
     tensor = torch.tensor(input_data, dtype=torch.float32)
     
@@ -29,8 +29,3 @@ def process_tensor_inefficiently(input_data):
     tensor = torch.tanh(tensor)  # New tensor instead of in-place tanh
     
     return tensor
-
-# Example usage
-data = [1.0, -2.0, 3.0]
-result = process_tensor_inefficiently(data)
-print(result)
