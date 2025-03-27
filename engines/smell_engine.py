@@ -11,6 +11,7 @@ from rules.filter_operations_rule import FilterOperationsRule
 from rules.conditional_operations_rules import ConditionalOperationsRule
 from rules.batch_matrix_multiplication_rule import BatchMatrixMultiplicationRule
 from rules.broadcasting_rule import BroadcastingRule
+from rules.calculating_gradients_rule import CalculatingGradientsRule
 from rules.chain_indexing_rule import ChainIndexingRule
 from rules.excessive_gpu_tensor_transfers_rule import ExcessiveGPUTensorTransfersRule
 from rules.ignoring_inplace_operations_rule import IgnoringInplaceOperationsRule
@@ -38,16 +39,14 @@ class SmellEngine:
         self.filepath = filepath
         self.engine = RuleEngine()
 
-        # Add basic rules
-        self.engine.add_rule(LongLoopRule())
-
-        # Add data science rules
+        # Add rules
         self.engine.add_rule(ElementWiseOperartionsRule())
         self.engine.add_rule(ReductionOperationsRule())
         self.engine.add_rule(FilterOperationsRule())
         self.engine.add_rule(ConditionalOperationsRule())
         self.engine.add_rule(BatchMatrixMultiplicationRule())
         self.engine.add_rule(BroadcastingRule())
+        self.engine.add_rule(CalculatingGradientsRule())
         self.engine.add_rule(ChainIndexingRule())
         self.engine.add_rule(ExcessiveGPUTensorTransfersRule())
         self.engine.add_rule(IgnoringInplaceOperationsRule())
