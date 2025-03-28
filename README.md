@@ -1,7 +1,7 @@
 ### CS4575 Project 2 - Group 1
 # GreenCodeAnalyzer: A VSCode Extension for Static Energy Analysis
 
-**Green Shift Left** is a static code analysis tool that identifies energy-inefficient patterns in Python code and suggests optimizations to improve energy consumption. By shifting energy efficiency concerns "left" (earlier) in the development process, developers can make more sustainable coding decisions from the start.
+**GreenCodeAnalyzer** is a static code analysis tool that identifies energy-inefficient patterns in Python code and suggests optimizations to improve energy consumption. By shifting energy efficiency concerns "left" (earlier) in the development process, developers can make more sustainable coding decisions from the start.
 
 ## Features
 
@@ -10,38 +10,84 @@
 - **Optimization Suggestions**: Provides specific recommendations to make code more energy-efficient
 - **Multiple Rule Detection**: Covers various energy-inefficient patterns common in data science and ML code
 
-## Supported Rules
+### Supported Rules
 
-The tool currently detects these energy code smells:
+The extension currently detects these energy code smells:
 
-| Rule    | Description | Impact |
-|---------|-------------|--------|
-| `long_loop` | Long-running loops with excessive iterations | High CPU usage over time |
-| `batch_matrix_mult` | Sequential matrix multiplications instead of batched operations | Missed hardware acceleration opportunities |
-| `broadcasting` | Inefficient tensor operations that could use broadcasting | Unnecessary memory allocations |
-| `chain_indexing` | Chained Pandas DataFrame indexing operations | Extra intermediate objects creation |
-| `ignoring_inplace_ops` | Operations that could use in-place variants | Unnecessary memory allocations |
-| `inefficient_iterrows` | Inefficient row-by-row Pandas iterations | Python overhead for operations |
-| `inefficient_df_joins` | Repeated merges or merges without DataFrame indexing | High memory usage and increased computation time |
-| `excessive_training` | Training loops without early stopping mechanisms | Wasted computation after model convergence |
+| Rule                               | Description                                                     | Impact                                                 |
+| ---------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------ |
+| `batch_matrix_mult`                | Sequential matrix multiplications instead of batched operations | Missed hardware acceleration opportunities             |
+| `broadcasting`                     | Inefficient tensor operations that could use broadcasting       | Unnecessary memory allocations                         |
+| `calculating_gradients`            | Computing gradients when not needed for training                | Unnecessary computation overhead                       |
+| `chain_indexing`                   | Chained Pandas DataFrame indexing operations                    | Extra intermediate objects creation                    |
+| `conditional_operations`           | Element-wise conditional operations in loops                    | Inefficient branching and repeated calculations        |
+| `element_wise_operations`          | Element-wise operations in loops                                | Inefficient iteration instead of vectorized operations |
+| `excessive_gpu_transfers`          | Frequent CPU-GPU tensor transfers                               | High data movement overhead                            |
+| `excessive_training`               | Training loops without early stopping mechanisms                | Wasted computation after model convergence             |
+| `filter_operations`                | Manual filtering in loops instead of vectorized operations      | Increased CPU workload                                 |
+| `ignoring_inplace_ops`             | Operations that could use in-place variants                     | Unnecessary memory allocations                         |
+| `ineffective_array_caching`        | Recreating identical arrays inside loops                        | Redundant memory and CPU usage                         |
+| `inefficient_df_joins`             | Repeated merges or merges without DataFrame indexing            | High memory usage and increased computation time       |
+| `inefficient_iterrows`             | Inefficient row-by-row Pandas iterations                        | Python overhead for operations                         |
+| `large_batch_size_memory_swapping` | Batch sizes causing memory swapping                             | Excessive disk I/O and system slowdown                 |
+| `long_loop`                        | Long-running loops with excessive iterations                    | High CPU usage over time                               |
+| `recomputing_group_by`             | Repetitive group by operations on the same data                 | Redundant computation and memory usage                 |
+| `reduction_operations`             | Manual reduction operations using loops                         | Missed vectorization opportunities                     |
+| `redundant_model_refitting`        | Redundant retraining of models with unchanged data              | Wasteful recalculation                                 |
+| `storing_intermediate_results`     | Storing large intermediate tensors or arrays                    | Excessive memory usage and potential swapping          |
+| `unnecessary_precision`            | Using higher precision than needed for the task                 | Wasted computation and memory resources                |
 
-## Getting Started
+## Installing the Extension from VS Code Marketplace
 
-### Prerequisites
+You can install the GreenCodeAnalyzer extension directly from the **VS Code Marketplace**:
 
-- Python 3.11 or higher
+1. Open VS Code
+2. Go to the Extensions view by clicking on the Extensions icon in the Activity Bar on the side of the window or press `Ctrl+Shift+X`
+3. Search for "GreenCodeAnalyzer" and click on the install button.
+
+Alternatively, you can install it from the [VS Code Marketplace website](https://marketplace.visualstudio.com/items?itemName=KevinHoxha.GreenCodeAnalyzer).
+
+### Using the Extension
+
+Once installed, you can analyze your Python code for energy inefficiencies:
+
+1. Open a Python file in VS Code
+2. Use one of the following methods to run the analyzer:
+   - Press `Ctrl+Shift+P` to open the Command Palette, then type and select "GreenCodeAnalyzer: Run Analyzer"
+   - Right-click in the editor and select "Run GreenCodeAnalyzer" from the context menu
+
+The analysis results will appear as decorations in your code editor, highlighting potential energy inefficiencies with suggestions for improvement.
+
+To clear the analysis markers:
+
+- Press `Ctrl+Shift+P` and select "GreenCodeAnalyzer: Clear Gutters"
+- Or right-click and select "Clear GreenCodeAnalyzer Gutters"
+
+### Interpreting Results
+
+Each detected code smell includes:
+
+- A description of the energy inefficiency
+- A specific recommendation for optimization
+
+## Running the Extension Locally
+
+### Requirements
+
+Python 3.10 or higher
 - VS Code
 - Required Python packages:
   - pandas
   - numpy
+  - scikit-learn
   - torch
-  - tensorflow (optional, for TensorFlow-specific rules)
+  - tensorflow
 
 ### Installation
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/green-shift-left.git
+   git clone https://github.com/ianjoshi/green-shift-left.git
    cd green-shift-left
    ```
 
@@ -83,7 +129,7 @@ Alternatively, you can use the VS Code extension for a more interactive experien
 1. Inside the editor, open `GreenCodeAnalyzer/src/extension.ts` and press `F5` or run the command **Debug: Start Debugging** from the Command Palette (`Ctrl+Shift+P`). 
 2. When prompted to choose a debug environment, select "VS Code Extension Development".
 
-3. Open a the folder `Test_files` from the repository in the extension and open the file `test.py`.
+3. Open the file you are working on in the new VS Code window that opens. 
 
 4. To run the static analysis, run the command **GreenCodeAnalyzer: Run Analyzer** from the Command Palette (`Ctrl+Shift+P`).
 

@@ -2,7 +2,7 @@
   "name": "GreenCodeAnalyzer",
   "displayName": "GreenCodeAnalyzer",
   "description": "",
-  "version": "0.0.6",
+  "version": "1.0.0",
   "publisher": "KevinHoxha",
   "icon": "green_code_analyzer_icon.png",
   "engines": {
