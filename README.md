@@ -16,26 +16,26 @@ The extension currently detects these energy code smells:
 
 | Rule                               | Description                                                     | Impact                                                 |
 | ---------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------ |
-| `batch_matrix_mult`                | Sequential matrix multiplications instead of batched operations | Missed hardware acceleration opportunities             |
+| `batch_matrix_multiplication`      | Sequential matrix multiplications instead of batched operations | Missed hardware acceleration opportunities             |
+| `blocking_data_loader`            | Prevent using data loading strategies that stall GPU execution   | The GPU may remain idle while waiting for data             |
 | `broadcasting`                     | Inefficient tensor operations that could use broadcasting       | Unnecessary memory allocations                         |
 | `calculating_gradients`            | Computing gradients when not needed for training                | Unnecessary computation overhead                       |
 | `chain_indexing`                   | Chained Pandas DataFrame indexing operations                    | Extra intermediate objects creation                    |
 | `conditional_operations`           | Element-wise conditional operations in loops                    | Inefficient branching and repeated calculations        |
+| `data_parallelization`          | Usage of torch.nn.DataParallel detected                            | Less efficient than DistributedDataParallel               |
 | `element_wise_operations`          | Element-wise operations in loops                                | Inefficient iteration instead of vectorized operations |
 | `excessive_gpu_transfers`          | Frequent CPU-GPU tensor transfers                               | High data movement overhead                            |
 | `excessive_training`               | Training loops without early stopping mechanisms                | Wasted computation after model convergence             |
 | `filter_operations`                | Manual filtering in loops instead of vectorized operations      | Increased CPU workload                                 |
 | `ignoring_inplace_ops`             | Operations that could use in-place variants                     | Unnecessary memory allocations                         |
-| `ineffective_array_caching`        | Recreating identical arrays inside loops                        | Redundant memory and CPU usage                         |
+| `inefficient_caching_of_common_arrays`        | Recreating identical arrays inside loops                        | Redundant memory and CPU usage                         |
+| `inefficient_data_loader_transfer` | DataLoader transfer to GPU without pin_memory                  | Increased data transfer time                           |
 | `inefficient_df_joins`             | Repeated merges or merges without DataFrame indexing            | High memory usage and increased computation time       |
 | `inefficient_iterrows`             | Inefficient row-by-row Pandas iterations                        | Python overhead for operations                         |
-| `large_batch_size_memory_swapping` | Batch sizes causing memory swapping                             | Excessive disk I/O and system slowdown                 |
-| `long_loop`                        | Long-running loops with excessive iterations                    | High CPU usage over time                               |
+| `large_batch_size_causing_memory_swapping` | Batch sizes causing memory swapping                             | Excessive disk I/O and system slowdown                 |
 | `recomputing_group_by`             | Repetitive group by operations on the same data                 | Redundant computation and memory usage                 |
 | `reduction_operations`             | Manual reduction operations using loops                         | Missed vectorization opportunities                     |
 | `redundant_model_refitting`        | Redundant retraining of models with unchanged data              | Wasteful recalculation                                 |
-| `storing_intermediate_results`     | Storing large intermediate tensors or arrays                    | Excessive memory usage and potential swapping          |
-| `unnecessary_precision`            | Using higher precision than needed for the task                 | Wasted computation and memory resources                |
 
 ## Installing the Extension from VS Code Marketplace
 

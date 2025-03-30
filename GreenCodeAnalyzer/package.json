@@ -2,8 +2,14 @@
   "name": "GreenCodeAnalyzer",
   "displayName": "GreenCodeAnalyzer",
   "description": "",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "publisher": "KevinHoxha",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ianjoshi/sustainablese-g1-green-shift-left"
+  },
+  "homepage": "https://mescribano23.github.io/GreenCodeAnalyzer/",
   "icon": "green_code_analyzer_icon.png",
   "engines": {
     "vscode": "^1.98.0"
