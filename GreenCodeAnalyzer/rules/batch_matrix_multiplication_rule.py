@@ -18,7 +18,9 @@ class BatchMatrixMultiplicationRule(BaseRule):
         super().__init__(id=self.id, name=self.name, description=self.description, optimization=self.optimization)
 
     def should_apply(self, node: ast.AST) -> bool:
-        """Apply the rule to both for and while loops."""
+        """
+        Apply the rule to both for and while loops.
+        """
         return isinstance(node, (ast.For, ast.While))
 
     def apply_rule(self, node: ast.AST) -> list[Smell]:
@@ -58,7 +60,7 @@ class BatchMatrixMultiplicationRule(BaseRule):
             for stmt in node.body:
                 if isinstance(stmt, ast.AugAssign) and isinstance(stmt.target, ast.Name):
                     # Detect augmented assignments like 'i += 1'
-                    loop_vars.add(stmt.target.id)  # e.g., i += 1
+                    loop_vars.add(stmt.target.id)
                 elif isinstance(stmt, ast.Assign):
                     # Check each assignment target
                     for target in stmt.targets:
@@ -70,7 +72,7 @@ class BatchMatrixMultiplicationRule(BaseRule):
 
     def _detect_matrix_multiplications(self, nodes: list[ast.AST], loop_vars: set[str]) -> list[ast.Call]:
         """
-        Detect matrix multiplication calls where arguments are indexed by loop variables.
+        Detect matrix multiplication calls where arguments contain subscripts indexed by loop variables.
         """
         matrix_calls = []
 
@@ -78,8 +80,8 @@ class BatchMatrixMultiplicationRule(BaseRule):
             # Check if the node is a standalone expression with a call
             if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call):
                 call = node.value
-                # Verify it’s a matrix multiplication and uses a loop variable
-                if self._is_matrix_mult_call(call) and any(self._is_indexed_with_loop_vars(arg, loop_vars) for arg in call.args):
+                # Verify it’s a matrix multiplication and arguments contain loop-variable-indexed subscripts
+                if self._is_matrix_mult_call(call) and any(self._contains_subscript_with_loop_vars(arg, loop_vars) for arg in call.args):
                     matrix_calls.append(call)
             # Check assignments
             elif isinstance(node, ast.Assign):
@@ -92,13 +94,13 @@ class BatchMatrixMultiplicationRule(BaseRule):
 
     def _find_calls(self, node, loop_vars: set[str]) -> list[ast.Call]:
         """
-        Recursively searches an AST node for matrix multiplication calls with indexed arguments.
+        Recursively searches an AST node for matrix multiplication calls with arguments containing loop-variable-indexed subscripts.
         """
         calls = []
 
         if isinstance(node, ast.Call):
-             # Check if this is a matrix multiplication call with indexed args
-            if self._is_matrix_mult_call(node) and any(self._is_indexed_with_loop_vars(arg, loop_vars) for arg in node.args):
+            # Check if this is a matrix multiplication call with relevant subscripts
+            if self._is_matrix_mult_call(node) and any(self._contains_subscript_with_loop_vars(arg, loop_vars) for arg in node.args):
                 calls.append(node)
         elif isinstance(node, (ast.Expr, ast.Assign, ast.BinOp)):
             # Recursively explore all fields of the node
@@ -134,16 +136,53 @@ class BatchMatrixMultiplicationRule(BaseRule):
                 
         return False
 
-    def _is_indexed_with_loop_vars(self, arg, loop_vars: set[str]) -> bool:
+    def _contains_subscript_with_loop_vars(self, node, loop_vars: set[str]) -> bool:
         """
-        Check if an argument is subscripted with any loop variables.
+        Recursively checks if a node or its subnodes contain a subscript using a loop variable.
         """
-        if isinstance(arg, ast.Subscript):
-            slice_val = arg.slice
-            if isinstance(slice_val, ast.Name) and slice_val.id in loop_vars:
-                return True  # Single index, e.g., A[i]
-            elif isinstance(slice_val, ast.Tuple):
-                for elt in slice_val.elts:
-                    if isinstance(elt, ast.Name) and elt.id in loop_vars:
-                        return True  # Multi-dimensional index, e.g., A[i, j]
+        # Check if the node is a subscript (e.g., A[i])
+        if isinstance(node, ast.Subscript):
+            if self._slice_uses_loop_var(node.slice, loop_vars):
+                return True
+            return self._contains_subscript_with_loop_vars(node.value, loop_vars)
+        # Handle method calls (e.g., tensor[i].unsqueeze(0))
+        elif isinstance(node, ast.Call):
+            # Check the function being called for subscripts
+            if self._contains_subscript_with_loop_vars(node.func, loop_vars):
+                return True
+            # Check each argument of the call
+            for arg in node.args:
+                if self._contains_subscript_with_loop_vars(arg, loop_vars):
+                    return True
+        # Handle attribute access (e.g., tensor[i].method)
+        elif isinstance(node, ast.Attribute):
+            return self._contains_subscript_with_loop_vars(node.value, loop_vars)
+        # Handle operations like addition, multiplication, etc.
+        elif isinstance(node, (ast.BinOp, ast.UnaryOp, ast.BoolOp)):
+            # Iterate over possible operand fields
+            for field in ('left', 'right', 'operand', 'values'):
+                if hasattr(node, field):
+                    operand = getattr(node, field)
+                    if isinstance(operand, list):
+                        for op in operand:
+                            if self._contains_subscript_with_loop_vars(op, loop_vars):
+                                return True
+                    else:
+                        if self._contains_subscript_with_loop_vars(operand, loop_vars):
+                            return True
+                        
+        # If no relevant subscripts are found, return False
+        return False
+
+    def _slice_uses_loop_var(self, slice_node, loop_vars: set[str]) -> bool:
+        """
+        Checks if a slice uses a loop variable.
+        """
+        # Check if the slice is a single variable (e.g., i in A[i])
+        if isinstance(slice_node, ast.Name):
+            return slice_node.id in loop_vars
+        # Handle multi-dimensional slices
+        elif isinstance(slice_node, ast.Tuple):
+            return any(self._slice_uses_loop_var(elt, loop_vars) for elt in slice_node.elts)
+        
         return False
