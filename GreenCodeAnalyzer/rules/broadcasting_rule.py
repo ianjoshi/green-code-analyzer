@@ -10,7 +10,7 @@ class BroadcastingRule(BaseRule):
     id = "broadcasting"
     name = "Broadcasting"
     description = "Use of tile where broadcasting would be more memory-efficient. Broadcasting avoids storing intermediate tiled results."
-    optimization = "Leverage implicit broadcasting to perform operations directly, avoiding explicit tiling. For example, use 'a + b' instead of 'a + tf.tile(b, [1, 2])'."
+    optimization = "Leverage implicit broadcasting to perform operations directly, avoiding explicit tiling. For example, use 'a + b' instead of 'a + tf.tile(b, [1, 2])' if shapes are compatible."
 
     def __init__(self):
         super().__init__(id=self.id,
@@ -21,6 +21,7 @@ class BroadcastingRule(BaseRule):
     def should_apply(self, node) -> bool:
         """
         Applies to binary operations involving a tile call (e.g., tf.tile, tensorflow.tile).
+        Returns True if either operand is a tile call, False otherwise.
         """
         if not isinstance(node, ast.BinOp):
             return False
@@ -30,7 +31,8 @@ class BroadcastingRule(BaseRule):
 
     def apply_rule(self, node) -> list[Smell]:
         """
-        Flags binary operations using tile where broadcasting could be applied instead.
+        Flags binary operations using tile where broadcasting could potentially be applied instead.
+        This rule assumes that the use of tile in a binary operation might be replaceable with broadcasting.
         """
         smells = []
 
@@ -74,11 +76,10 @@ class BroadcastingRule(BaseRule):
         if not isinstance(expr, ast.Call) or not isinstance(expr.func, ast.Attribute) or expr.func.attr != "tile":
             return False
         
-        # Could be tf.tile (with alias) or tensorflow.tile (no alias)
         func_value = expr.func.value
-        if isinstance(func_value, ast.Name):  # e.g., tf.tile
+        if isinstance(func_value, ast.Name):
             return True
-        elif isinstance(func_value, ast.Attribute):  # e.g., tensorflow.tile
+        elif isinstance(func_value, ast.Attribute):
             return func_value.attr == "tensorflow" and isinstance(func_value.value, ast.Name) and func_value.value.id == "tensorflow"
         
         return False
