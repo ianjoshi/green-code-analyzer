@@ -5,19 +5,6 @@ from rules.base_rule import BaseRule
 class BatchMatrixMultiplicationRule(BaseRule):
     """
     Detects sequential matrix multiplications inside loops that can be optimized with batch operations.
-
-    This rule identifies cases where matrix multiplications (e.g., np.matmul, torch.bmm) are performed
-    repeatedly within for or while loops on indexed slices of arrays. Batching these operations into a single call
-    can improve performance by leveraging parallel execution, especially on GPUs.
-
-    Example:
-        Before:
-            i = 0
-            while i < n:
-                result[i] = np.matmul(A[i], B[i])
-                i += 1
-        After:
-            result = np.matmul(A, B)  # Batched operation
     """
     id = "batch_matrix_mult"
     name = "Sequential Matrix Multiplications"
