@@ -1,11 +1,10 @@
 ### CS4575 Project 2 - Group 1
-# GreenCodeAnalyzer: A VSCode Extension for Static Energy Analysis
+# GreenCodeAnalyzer: A VSCode Extension for Static Energy Analysis in Data Science
 
-**GreenCodeAnalyzer** is a static code analysis tool that identifies energy-inefficient patterns in Python code and suggests optimizations to improve energy consumption. By shifting energy efficiency concerns "left" (earlier) in the development process, developers can make more sustainable coding decisions from the start.
+**GreenCodeAnalyzer** is a static code analysis tool that identifies energy-inefficient patterns in Python code and suggests optimizations to improve energy consumption. By shifting energy efficiency concerns "left" (earlier) in the development process, developers can make more sustainable coding decisions from the start. This tool focuses on the context of data science in Python.
 
 ## Features
 
-- **Static Energy Analysis**: Analyzes Python code without executing it to detect potential energy hotspots
 - **Visual Code Annotations**: VS Code extension that provides visual feedback with highlighted energy smells
 - **Optimization Suggestions**: Provides specific recommendations to make code more energy-efficient
 - **Multiple Rule Detection**: Covers various energy-inefficient patterns common in data science and ML code
@@ -87,8 +86,8 @@ Python 3.10 or higher
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/ianjoshi/sustainablese-g1-green-shift-left.git
-   cd sustainablese-g1-green-shift-left
+   git clone https://github.com/ianjoshi/green-code-analyzer.git
+   cd green-code-analyzer
    ```
 
 2. Install required dependencies:
@@ -146,3 +145,12 @@ The tool works by:
 2. Applying predefined rules to identify inefficient patterns
 3. Generating appropriate warnings and suggestions
 4. Visualizing results in the editor (VS Code extension) or terminal output
+
+## Contributing
+
+We welcome contributions to GreenCodeAnalyzer! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on how to get started.
+
+## Code of Conduct
+
+We are committed to fostering an open and welcoming environment. Please read our [Code of Conduct](CODE_OF_CONDUCT.md) to understand the expectations for participation in our community.
+
