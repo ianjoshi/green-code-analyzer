@@ -68,6 +68,10 @@ To clear annotations, run the command **GreenCodeAnalyzer: Clear Gutters** from 
 - Expand to 20 energy efficiency rules
 - Bug fixes
 
+### 1.1.0
+- Fix bugs and improve rule detection logic
+- Add progress message during analysis
+
 <!-- --- -->
 
 ## How It Works
