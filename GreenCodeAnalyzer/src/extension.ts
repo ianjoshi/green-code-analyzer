@@ -46,12 +46,18 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
+      // Show message that analysis is starting
+      const progressMessage = vscode.window.showInformationMessage(
+        "GreenCodeAnalyzer is analyzing your code...",
+        { modal: false }
+      );
+
       // Use extension path instead of workspace folder
       // This ensures the extension works in any workspace
       const extensionPath = context.extensionPath;
       
       // Run the main script directly with the file path
-      runMainScript(extensionPath, filePath, context);
+      runMainScript(extensionPath, filePath, context, progressMessage);
     }
   );
 
@@ -76,7 +82,7 @@ function clearDecorations() {
 }
 
 // Run the main script from the extension directory to analyze the file
-function runMainScript(extensionPath: string, filePath: string, context: vscode.ExtensionContext) {
+function runMainScript(extensionPath: string, filePath: string, context: vscode.ExtensionContext, progressMessage: Thenable<any>) {
   // Look for main.py in the extension's src directory
   const mainScriptPath = path.join(extensionPath, "main.py");
 
@@ -97,12 +103,21 @@ function runMainScript(extensionPath: string, filePath: string, context: vscode.
 
   // Process all output when the process ends
   pythonProcess.on("close", () => {
+    // Dismiss the progress message
+    progressMessage.then(undefined, undefined);
+    
     if (stdoutData) {
       processAnalyzerOutput(stdoutData, context);
+      // Show analysis completion message
+      vscode.window.showInformationMessage("GreenCodeAnalyzer analysis complete!");
+    } else {
+      vscode.window.showInformationMessage("GreenCodeAnalyzer analysis complete with no issues found.");
     }
   });
 
   pythonProcess.stderr.on("data", (data) => {
+    // Dismiss the progress message
+    progressMessage.then(undefined, undefined);
     vscode.window.showErrorMessage(`Error: ${data.toString()}`);
   });
 }
