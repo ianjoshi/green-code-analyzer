@@ -49,11 +49,37 @@ class InefficientDataFrameJoinsRule(BaseRule):
             except:
                 pass
             return False
+        
+        # Check if this is an os.path.join call (which we should ignore)
+        if self._is_os_path_join(node):
+            return False
             
         # Check for DataFrame merge or join calls
         return (isinstance(node, ast.Call) and 
                 isinstance(node.func, ast.Attribute) and 
                 node.func.attr in ('merge', 'join'))
+    
+    def _is_os_path_join(self, node: ast.AST) -> bool:
+        """
+        Determines if the given call node is an os.path.join call.
+        """
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            return False
+            
+        # Check if it's specifically os.path.join
+        if node.func.attr != 'join':
+            return False
+            
+        # Check if it's from os.path module
+        try:
+            value = node.func.value
+            if isinstance(value, ast.Attribute) and value.attr == 'path':
+                if isinstance(value.value, ast.Name) and value.value.id == 'os':
+                    return True
+        except Exception:
+            pass
+            
+        return False
     
     def apply_rule(self, node: ast.AST) -> list[Smell]:
         """
