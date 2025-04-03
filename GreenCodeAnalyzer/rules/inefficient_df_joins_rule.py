@@ -54,10 +54,37 @@ class InefficientDataFrameJoinsRule(BaseRule):
         if self._is_os_path_join(node):
             return False
             
+        # Check if this is a string join method (which we should ignore)
+        if self._is_string_join(node):
+            return False
+            
         # Check for DataFrame merge or join calls
         return (isinstance(node, ast.Call) and 
                 isinstance(node.func, ast.Attribute) and 
                 node.func.attr in ('merge', 'join'))
+    
+    def _is_string_join(self, node: ast.AST) -> bool:
+        """
+        Determines if the given node is a string join operation (like ''.join(...))
+        """
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute) or node.func.attr != 'join':
+            return False
+            
+        value = node.func.value
+        
+        # Check for string literals: '', "", etc.
+        if isinstance(value, ast.Constant) and isinstance(value.value, str):
+            return True
+            
+        # Check for raw string literals
+        if hasattr(ast, "JoinedStr") and isinstance(value, ast.JoinedStr):
+            return True
+            
+        # Check for f-strings
+        if hasattr(ast, "FormattedValue") and isinstance(value, ast.FormattedValue):
+            return True
+            
+        return False
     
     def _is_os_path_join(self, node: ast.AST) -> bool:
         """

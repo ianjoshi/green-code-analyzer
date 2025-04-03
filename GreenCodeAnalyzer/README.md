@@ -2,6 +2,8 @@
 
 **GreenCodeAnalyzer** is a static code analysis tool that identifies energy-inefficient patterns in Python code and suggests optimizations to improve energy consumption. By shifting energy efficiency concerns "left" (earlier) in the development process, developers can make more sustainable coding decisions from the start.
 
+You can find a more detailed report of GreenCodeAnalyzer in [this website](https://mescribano23.github.io/GreenCodeAnalyzer/).
+
 ## Features
 
 - **Static Energy Analysis**: Analyzes Python code without execution to detect potential energy hotspots
