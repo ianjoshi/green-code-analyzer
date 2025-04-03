@@ -1,3 +1,5 @@
+# From externally authored source: https://github.com/VenkteshV/DEXTER
+
 from configparser import ConfigParser
 import heapq
 from typing import Dict, List, Union, Tuple, Any

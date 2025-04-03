@@ -1,3 +1,5 @@
+# From externally authored source: https://github.com/jingtaozhan/DRhard
+
 import sys
 sys.path += ["./"]
 import os
