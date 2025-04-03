@@ -34,7 +34,11 @@ class CalculatingGradientsRule(BaseRule):
         """
         Creates a GradientTrackingVisitor to walk the AST, then collects and returns any identified smells.
         """
-        visitor = self.GradientTrackingVisitor(is_module=isinstance(node, ast.Module))
+        visitor = self.GradientTrackingVisitor(
+            is_module=isinstance(node, ast.Module),
+            pytorch_model_bases=self.pytorch_model_bases,
+            tensorflow_model_bases=self.tensorflow_model_bases
+        )
         visitor.visit(node)
         smells = []
 
@@ -71,12 +75,15 @@ class CalculatingGradientsRule(BaseRule):
           - Whether .backward() or tape.gradient() is called.
         """
 
-        def __init__(self, is_module: bool):
+        def __init__(self, is_module: bool, pytorch_model_bases: set, tensorflow_model_bases: set):
             """
-            :param is_module: True if analyzing the top-level module node. 
-                              Otherwise, analyzing a function node.
+            :param is_module: True if analyzing the top-level module node.
+            :param pytorch_model_bases: Set of PyTorch base classes to detect inheritance.
+            :param tensorflow_model_bases: Set of TensorFlow base classes to detect inheritance.
             """
             self.is_module = is_module
+            self.pytorch_model_bases = pytorch_model_bases
+            self.tensorflow_model_bases = tensorflow_model_bases
 
             # Sets of variable or attribute names recognized as PyTorch/TF models
             self.pytorch_models = set()
@@ -115,7 +122,7 @@ class CalculatingGradientsRule(BaseRule):
 
         def visit_FunctionDef(self, node: ast.FunctionDef):
             """
-            Visits a function definition. 
+            Visits a function definition.
             Continues visiting children for assignments, calls, etc.
             """
             self.generic_visit(node)
@@ -192,7 +199,7 @@ class CalculatingGradientsRule(BaseRule):
                 base_chain = self.get_attribute_chain(base)
                 joined = ".".join(base_chain)
                 if joined in self.pytorch_model_bases:
-                    self.pytorch_models.add(node.name) 
+                    self.pytorch_models.add(node.name)
                 elif joined in self.tensorflow_model_bases:
                     self.tensorflow_models.add(node.name)
 
