@@ -145,3 +145,12 @@ The tool works by:
 2. Applying predefined rules to identify inefficient patterns
 3. Generating appropriate warnings and suggestions
 4. Visualizing results in the editor (VS Code extension) or terminal output
+
+## Contributing
+
+We welcome contributions to GreenCodeAnalyzer! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on how to get started.
+
+## Code of Conduct
+
+We are committed to fostering an open and welcoming environment. Please read our [Code of Conduct](CODE_OF_CONDUCT.md) to understand the expectations for participation in our community.
+
