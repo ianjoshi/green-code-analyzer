@@ -87,8 +87,8 @@ Python 3.10 or higher
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/ianjoshi/green-shift-left.git
-   cd green-shift-left
+   git clone https://github.com/ianjoshi/sustainablese-g1-green-shift-left.git
+   cd sustainablese-g1-green-shift-left
    ```
 
 2. Install required dependencies:
