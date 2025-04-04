@@ -1,137 +1,131 @@
-import pandas as pd
-import numpy as np
+# External source from: https://github.com/lutzroeder/netron/blob/main/tools/sklearn_script.py
 
-def female_bias_via_undersampling(X_train, y_train):
-    train_data = X_train.copy()
-    train_data['checked'] = y_train
+''' scikit-learn metadata script '''
 
-    # Separate training data by gender and checked status.
-    male_checked = train_data[(train_data['persoon_geslacht_vrouw'] == 0) & (train_data['checked'] == 1)]
-    male_not_checked = train_data[(train_data['persoon_geslacht_vrouw'] == 0) & (train_data['checked'] == 0)]
+import json
+import os
+import pydoc
+import re
+import sys
 
-    female_checked = train_data[(train_data['persoon_geslacht_vrouw'] == 1) & (train_data['checked'] == 1)]
-    female_not_checked = train_data[(train_data['persoon_geslacht_vrouw'] == 1) & (train_data['checked'] == 0)]
+def _split_docstring(value):
+    headers = {}
+    current_header = ''
+    current_lines = []
+    lines = value.split('\n')
+    index = 0
+    while index < len(lines):
+        if index + 1 < len(lines) and len(lines[index + 1].strip(' ')) > 0 and \
+            len(lines[index + 1].strip(' ').strip('-')) == 0:
+            headers[current_header] = current_lines
+            current_header = lines[index].strip(' ')
+            current_lines = []
+            index = index + 1
+        else:
+            current_lines.append(lines[index])
+        index = index + 1
+    headers[current_header] = current_lines
+    return headers
 
-    # Keep  only 30% of checked females in training set.
-    female_checked_sampled = female_checked.sample(frac=0.5, random_state=42)
+def _update_description(schema, lines):
+    if len(''.join(lines).strip(' ')) > 0:
+        for i, value in enumerate(lines):
+            lines[i] = value.lstrip(' ')
+        schema['description'] = '\n'.join(lines)
 
-    # Keep only 20% of non-checked males in training set
-    male_not_checked_sampled = male_not_checked.sample(frac=0.5, random_state=42)
+def _attribute_value(attribute_type, attribute_value):
+    if attribute_value in ('None', 'np.finfo(float).eps'):
+        return None
+    if attribute_type in ('float32', 'int32', 'boolean', 'string'):
+        if attribute_value in ("'auto'", '"auto"') or attribute_type == 'string':
+            return attribute_value.strip("'").strip('"')
+    if attribute_type == 'float32':
+        return float(attribute_value)
+    if attribute_type == 'int32':
+        return int(attribute_value)
+    if attribute_type == 'boolean':
+        if attribute_value in ('True', 'False'):
+            return attribute_value == 'True'
+        raise ValueError("Unknown boolean default value '" + str(attribute_value) + "'.")
+    if attribute_type:
+        raise ValueError("Unknown default type '" + attribute_type + "'.")
+    return attribute_value.strip("'")
 
-    # Combine training data back.
-    biased_train_data = pd.concat([female_checked_sampled, female_not_checked, male_checked, male_not_checked_sampled])
+def _find_attribute(schema, name):
+    schema.setdefault('attributes', [])
+    attribute = next((_ for _ in schema['attributes'] if _['name'] == name), None)
+    if not attribute:
+        attribute = { 'name': name }
+        schema['attributes'].append(attribute)
+    return attribute
 
-    # Get final X_train and y_train from biased data.
-    y_train = biased_train_data['checked']
-    X_train = biased_train_data.drop(['checked'], axis=1)
-    
-    return X_train, y_train
+def _update_attributes(schema, lines):
+    doc_indent = '    ' if sys.version_info[:2] >= (3, 13) else '        '
+    while len(lines) > 0:
+        line = lines.pop(0)
+        match = re.match(r'\s*(\w*)\s*:\s*(.*)\s*', line)
+        if not match:
+            raise SyntaxError("Expected ':' in parameter.")
+        name = match.group(1)
+        line = match.group(2)
+        attribute = _find_attribute(schema, name)
+        match = re.match(r'(.*),\s*default=(.*)\s*', line)
+        default_value = None
+        if match:
+            line = match.group(1)
+            default_value = match.group(2)
+        attribute_types = {
+            'float': 'float32',
+            'boolean': 'boolean',
+            'bool': 'boolean',
+            'str': 'string',
+            'string': 'string',
+            'int': 'int32',
+            'integer': 'int32'
+        }
+        attribute_type = attribute_types.get(line, None)
+        if default_value:
+            attribute['default'] = _attribute_value(attribute_type, default_value)
+        description = []
+        while len(lines) > 0 and (len(lines[0].strip(' ')) == 0 or lines[0].startswith(doc_indent)):
+            line = lines.pop(0).lstrip(' ')
+            description.append(line)
+        attribute['description'] = '\n'.join(description)
 
-def female_bias_via_oversampling(X_train, y_train):
-    train_data = X_train.copy()
-    train_data['checked'] = y_train
+def _metadata():
+    root_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    json_file = os.path.join(root_dir, 'source', 'sklearn-metadata.json')
+    with open(json_file, 'r', encoding='utf-8') as file:
+        json_root = json.loads(file.read())
 
-    # Separate training data by gender and checked status
-    male_checked = train_data[(train_data['persoon_geslacht_vrouw'] == 0) & (train_data['checked'] == 1)]
-    male_not_checked = train_data[(train_data['persoon_geslacht_vrouw'] == 0) & (train_data['checked'] == 0)]
+    for schema in json_root:
+        name = schema['name']
+        skip_modules = [
+            'lightgbm.',
+            'sklearn.svm.classes',
+            'sklearn.ensemble.forest.',
+            'sklearn.ensemble.weight_boosting.',
+            'sklearn.neural_network.multilayer_perceptron.',
+            'sklearn.tree.tree.'
+        ]
+        if not any(name.startswith(module) for module in skip_modules):
+            class_definition = pydoc.locate(name)
+            if not class_definition:
+                raise KeyError('\'' + name + '\' not found.')
+            docstring = class_definition.__doc__
+            if not docstring:
+                raise Exception('\'' + name + '\' missing __doc__.') # pylint: disable=broad-exception-raised
+            headers = _split_docstring(docstring)
+            if '' in headers:
+                _update_description(schema, headers[''])
+            if 'Parameters' in headers:
+                _update_attributes(schema, headers['Parameters'])
 
-    female_checked = train_data[(train_data['persoon_geslacht_vrouw'] == 1) & (train_data['checked'] == 1)]
-    female_not_checked = train_data[(train_data['persoon_geslacht_vrouw'] == 1) & (train_data['checked'] == 0)]
+    with open(json_file, 'w', encoding='utf-8') as file:
+        file.write(json.dumps(json_root, sort_keys=False, indent=2))
 
-    # Oversample male checked cases (multiply by 5)
-    male_checked_oversampled = pd.concat([male_checked] * 4)
+def main(): # pylint: disable=missing-function-docstring
+    _metadata()
 
-    # Oversample female not checked cases (multiply by 8)
-    female_not_checked_oversampled = pd.concat([female_not_checked] * 4)
-
-    # Combine training data back
-    biased_train_data = pd.concat([
-        female_checked,  
-        female_not_checked_oversampled,  
-        male_checked_oversampled,  
-        male_not_checked 
-    ])
-
-    # Get final X_train and y_train from biased data
-    y_train = biased_train_data['checked']
-    X_train = biased_train_data.drop(['checked'], axis=1)
-    
-    return X_train, y_train
-
-def female_bias_via_hybrid_sampling(X_train, y_train):
-    train_data = X_train.copy()
-    train_data['checked'] = y_train
-
-    # Separate training data by gender and checked status
-    male_checked = train_data[(train_data['persoon_geslacht_vrouw'] == 0) & (train_data['checked'] == 1)]
-    male_not_checked = train_data[(train_data['persoon_geslacht_vrouw'] == 0) & (train_data['checked'] == 0)]
-    female_checked = train_data[(train_data['persoon_geslacht_vrouw'] == 1) & (train_data['checked'] == 1)]
-    female_not_checked = train_data[(train_data['persoon_geslacht_vrouw'] == 1) & (train_data['checked'] == 0)]
-
-    # Undersampling
-    # Reduce female checked cases to 60%
-    female_checked_undersampled = female_checked.sample(frac=0.5, random_state=42)
-    # Reduce male not checked cases to 70%
-    male_not_checked_undersampled = male_not_checked.sample(frac=0.5, random_state=42)
-
-    # Oversampling
-    # Increase male checked cases by 3x
-    male_checked_oversampled = pd.concat([male_checked] * 2)
-    # Increase female not checked cases by 4x
-    female_not_checked_oversampled = pd.concat([female_not_checked] * 2)
-
-    # Combine all modified datasets
-    biased_train_data = pd.concat([
-        female_checked_undersampled,     
-        female_not_checked_oversampled, 
-        male_checked_oversampled,        
-        male_not_checked_undersampled   
-    ])
-
-    # Get final X_train and y_train from biased data
-    y_train = biased_train_data['checked']
-    X_train = biased_train_data.drop(['checked'], axis=1)
-    
-    return X_train, y_train
-
-def female_bias_via_label_flipping(X_train, y_train):
-    # Create copies to avoid modifying original data
-    X_modified = X_train.copy()
-    y_modified = y_train.copy()
-    
-    # Create a DataFrame combining features and target for easier manipulation
-    data = X_modified.copy()
-    data['checked'] = y_modified
-    
-    # Identify females who were checked (these are candidates for flipping to not checked)
-    female_checked_mask = (data['persoon_geslacht_vrouw'] == 1) & (data['checked'] == 1)
-    female_checked_indices = data[female_checked_mask].index
-    
-    # Identify males who were not checked (these are candidates for flipping to checked)
-    male_not_checked_mask = (data['persoon_geslacht_vrouw'] == 0) & (data['checked'] == 0)
-    male_not_checked_indices = data[male_not_checked_mask].index
-    
-    # Randomly select indices for flipping
-    np.random.seed(42)
-    females_to_flip = np.random.choice(
-        female_checked_indices,
-        size=int(len(female_checked_indices) * 0.5),
-        replace=False
-    )
-    males_to_flip = np.random.choice(
-        male_not_checked_indices,
-        size=int(len(male_not_checked_indices) * 0.5),  # Flip fewer males
-        replace=False
-    )
-    
-    # Flip the labels
-    data.loc[females_to_flip, 'checked'] = False # Flip checked females to not checked
-    data.loc[males_to_flip, 'checked'] = True    # Flip not checked males to checked
-    
-    # Separate features and target
-    y_train = data['checked']
-    X_train = data.drop(['checked'], axis=1)
-    
-    return X_train, y_train
-
-    
+if __name__ == '__main__':
+    main()

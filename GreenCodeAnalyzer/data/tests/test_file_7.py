@@ -15,8 +15,6 @@ def parse_measurements(data):
         print("Error in parse_measurements")
         return {}
 
-
-
 def generate_completion_trigger_data(CUPS):
     data = []
     document = "Untitled-1"
@@ -25,7 +23,7 @@ def generate_completion_trigger_data(CUPS):
     parsed_measurements = CUPS['Measurements'].apply(parse_measurements)
     measurements_df = pd.json_normalize(parsed_measurements)
     #save measurements_df as a csv file
-    measurements_df.to_csv('Project\Data\dataLabeling\measurements_df.csv', index=False)
+    measurements_df.to_csv('Project/Data/dataLabeling/measurements_df.csv', index=False)
 
     for i, row in CUPS.iterrows():
         text_change = row["CurrentSuggestion"]
@@ -53,16 +51,12 @@ def generate_completion_trigger_data(CUPS):
     
     return data
 
-
-
-
-
 def main():
 
    
-    CUPS = pd.read_csv('Project\Data\dataLabeling\majority_voted_dataset.csv')
+    CUPS = pd.read_csv('Project/Data/dataLabeling/majority_voted_dataset.csv')
 
-    output_file = 'Project\Data\CUPS_completion_trigger_data.json'
+    output_file = 'Project/Data/CUPS_completion_trigger_data.json'
     data = generate_completion_trigger_data(CUPS)
     with open(output_file, 'w') as f:
         json.dump(data, f, indent=4)

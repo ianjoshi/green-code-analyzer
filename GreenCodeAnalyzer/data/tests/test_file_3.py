@@ -1,281 +1,125 @@
-import onnxruntime as ort
-import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
-from aif360.datasets import BinaryLabelDataset
-from aif360.metrics import ClassificationMetric
-from sklearn.model_selection import train_test_split
+# From externally authored source: https://github.com/jingtaozhan/DRhard
 
-def analyze_model_fairness(data_path, model_paths, protected_attributes, with_plot=False):
-    data = pd.read_csv(data_path)
-    data = data.astype(np.float32)
-    data = data.drop(["Ja", "Nee"], axis=1)
-    
-    if with_plot:
-        for attribute in protected_attributes:
-            plt.figure()
-            plt.title(attribute)
-            plt.hist(data[attribute])
-            plt.show()
-            print(f"{attribute}: {data[attribute].unique()}, max={data[attribute].unique().max()}")
+"""Lamb optimizer."""
 
-    train_data, test_data = train_test_split(data, test_size=0.2, random_state=42)
+import collections
+import math
 
-    # Create privileged and unprivileged groups for each protected attribute
-    for attribute in protected_attributes:
-        if attribute == 'persoon_leeftijd_bij_onderzoek':
-            test_data[f'privileged_group_{attribute}'] = test_data[attribute] > 40
-        elif attribute == 'adres_aantal_brp_adres':
-            test_data[f'privileged_group_{attribute}'] = test_data[attribute] < 4
-        elif attribute == 'adres_aantal_verschillende_wijken':
-            test_data[f'privileged_group_{attribute}'] = test_data[attribute] < 3
-        elif attribute == 'adres_aantal_verzendadres':
-            test_data[f'privileged_group_{attribute}'] = test_data[attribute] < 1
-        elif attribute == 'adres_aantal_woonadres_handmatig':
-            test_data[f'privileged_group_{attribute}'] = test_data[attribute] < 1
-        elif attribute == 'adres_dagen_op_adres':
-            test_data[f'privileged_group_{attribute}'] = test_data[attribute] > 6000
-        else:
-            test_data[f'privileged_group_{attribute}'] = test_data[attribute] == 0
-
-    # Prepare dataset for AIF360
-    protected_attribute_names = [f'privileged_group_{attribute}' for attribute in protected_attributes]
-
-    results = {}
-
-    for model_path in model_paths:
-        model_name = model_path.split('/')[-1].split('.')[0]
-        session = ort.InferenceSession(model_path)
-
-        # Get model predictions
-        input_name = session.get_inputs()[0].name
-        predictions = session.run(None, {input_name: test_data.drop(['checked'] + protected_attribute_names, axis=1).values.astype(np.float32)})[0]
-
-        # Create dataset with predictions
-        dataset = BinaryLabelDataset(
-            favorable_label=1,
-            unfavorable_label=0,
-            df=test_data,
-            label_names=['checked'],
-            protected_attribute_names=protected_attribute_names
-        )
-
-        pred_dataset = dataset.copy()
-        pred_dataset.scores = predictions
-
-        feature_results = {}
-
-        # Calculate fairness metrics for each protected attribute
-        for attribute in protected_attribute_names:
-            metrics = ClassificationMetric(
-                dataset,
-                pred_dataset,
-                unprivileged_groups=[{attribute: 0}],
-                privileged_groups=[{attribute: 1}]
-            )
-
-            feature_results[attribute] = {
-                'disparate_impact': metrics.disparate_impact(),
-                'statistical_parity_difference': metrics.statistical_parity_difference(),
-                'equal_opportunity_difference': metrics.equal_opportunity_difference(),
-                'average_odds_difference': metrics.average_odds_difference()
-            }
-
-        results[model_name] = feature_results
-
-    return results
-
-def fairness_test(X_test : pd.DataFrame, Y_test : pd.Series, session, protected_attributes = None):
-    if protected_attributes is None:
-        protected_attributes = [
-            'persoon_leeftijd_bij_onderzoek',
-            'adres_aantal_brp_adres',
-            'adres_aantal_verschillende_wijken',
-            'adres_aantal_verzendadres',
-            'adres_aantal_woonadres_handmatig',
-            'adres_dagen_op_adres',
-            'adres_recentst_onderdeel_rdam',
-            'adres_recentste_buurt_groot_ijsselmonde',
-            'adres_recentste_buurt_nieuwe_westen',
-            'adres_recentste_buurt_other',
-            'adres_recentste_buurt_oude_noorden',
-            'adres_recentste_buurt_vreewijk',
-            'adres_recentste_plaats_other',
-            'adres_recentste_plaats_rotterdam',
-            'adres_recentste_wijk_charlois',
-            'adres_recentste_wijk_delfshaven',
-            'adres_recentste_wijk_feijenoord',
-            'adres_recentste_wijk_ijsselmonde',
-            'adres_recentste_wijk_kralingen_c',
-            'adres_recentste_wijk_noord',
-            'adres_recentste_wijk_other',
-            'adres_recentste_wijk_prins_alexa',
-            'adres_recentste_wijk_stadscentru',
-            'adres_unieke_wijk_ratio'
-        ]
-        
-    # Create privileged and unprivileged groups for each protected attribute
-    for attribute in protected_attributes:
-        if attribute == 'persoon_leeftijd_bij_onderzoek':
-            X_test[f'privileged_group_{attribute}'] = X_test[attribute] > 40
-        elif attribute == 'adres_aantal_brp_adres':
-            X_test[f'privileged_group_{attribute}'] = X_test[attribute] < 4
-        elif attribute == 'adres_aantal_verschillende_wijken':
-            X_test[f'privileged_group_{attribute}'] = X_test[attribute] < 3
-        elif attribute == 'adres_aantal_verzendadres':
-            X_test[f'privileged_group_{attribute}'] = X_test[attribute] < 1
-        elif attribute == 'adres_aantal_woonadres_handmatig':
-            X_test[f'privileged_group_{attribute}'] = X_test[attribute] < 1
-        elif attribute == 'adres_dagen_op_adres':
-            X_test[f'privileged_group_{attribute}'] = X_test[attribute] > 6000
-        else:
-            X_test[f'privileged_group_{attribute}'] = X_test[attribute] == 0
-
-    # Prepare dataset for AIF360
-    protected_attribute_names = [f'privileged_group_{attribute}' for attribute in protected_attributes]
-
-    # Get model predictions
-    input_name = session.get_inputs()[0].name
-    predictions = session.run(None, {input_name: X_test.drop(protected_attribute_names, axis=1).values.astype(np.float32)})[0]
-
-    # Create DataFrame with features and label
-    test_data = pd.concat([X_test, Y_test.rename('checked')], axis=1)
-    
-    dataset = BinaryLabelDataset(
-        favorable_label=1,
-        unfavorable_label=0,
-        df=test_data,
-        label_names=['checked'],
-        protected_attribute_names=protected_attribute_names
-    )
-
-    pred_dataset = dataset.copy()
-    pred_dataset.scores = predictions
-
-    feature_results = {}
-
-    # Calculate fairness metrics for each protected attribute
-    for attribute in protected_attribute_names:
-        metrics = ClassificationMetric(
-            dataset,
-            pred_dataset,
-            unprivileged_groups=[{attribute: 0}],
-            privileged_groups=[{attribute: 1}]
-        )
-
-        feature_results[attribute] = {
-            'disparate_impact': metrics.disparate_impact(),
-            'statistical_parity_difference': metrics.statistical_parity_difference(),
-            'equal_opportunity_difference': metrics.equal_opportunity_difference(),
-            'average_odds_difference': metrics.average_odds_difference()
-        }
-
-    return feature_results
+import torch
+from torch.utils.tensorboard import SummaryWriter
+from torch.optim import Optimizer
 
 
-def print_fairness_report(results):
-    for model_name, features in results.items():
-        print(f"\n=== Fairness Report for {model_name} ===")
+def log_lamb_rs(optimizer: Optimizer, event_writer: SummaryWriter, token_count: int):
+    """Log a histogram of trust ratio scalars in across layers."""
+    results = collections.defaultdict(list)
+    for group in optimizer.param_groups:
+        for p in group['params']:
+            state = optimizer.state[p]
+            for i in ('weight_norm', 'adam_norm', 'trust_ratio'):
+                if i in state:
+                    results[i].append(state[i])
 
-        for feature, metrics in features.items():
-            print(f"\nFairness Metrics for {feature}:")
-            print(f"Disparate Impact: {metrics['disparate_impact']:.3f}")
-            print(f"Statistical Parity Difference: {metrics['statistical_parity_difference']:.3f}")
-            print(f"Equal Opportunity Difference: {metrics['equal_opportunity_difference']:.3f}")
-            print(f"Average Odds Difference: {metrics['average_odds_difference']:.3f}")
+    for k, v in results.items():
+        event_writer.add_histogram(f'lamb/{k}', torch.tensor(v), token_count)
 
+class Lamb(Optimizer):
+    r"""Implements Lamb algorithm.
 
-def plot_fairness_results(results, save_path='results/comparison_results/fairness_plot.png'):
-    clean_results = {}
-    for model_name in results:
-        clean_name = f"model{model_name.split('model_')[1]}"
-        clean_results[clean_name] = results[model_name]
+    It has been proposed in `Large Batch Optimization for Deep Learning: Training BERT in 76 minutes`_.
 
-    results = clean_results
+    Arguments:
+        params (iterable): iterable of parameters to optimize or dicts defining
+            parameter groups
+        lr (float, optional): learning rate (default: 1e-3)
+        betas (Tuple[float, float], optional): coefficients used for computing
+            running averages of gradient and its square (default: (0.9, 0.999))
+        eps (float, optional): term added to the denominator to improve
+            numerical stability (default: 1e-8)
+        weight_decay (float, optional): weight decay (L2 penalty) (default: 0)
+        adam (bool, optional): always use trust ratio = 1, which turns this into
+            Adam. Useful for comparison purposes.
 
-    metrics = ['disparate_impact', 'statistical_parity_difference',
-               'equal_opportunity_difference', 'average_odds_difference']
+    .. _Large Batch Optimization for Deep Learning: Training BERT in 76 minutes:
+        https://arxiv.org/abs/1904.00962
+    """
 
-    plt.rcParams['figure.figsize'] = (20, 10)
-    plt.rcParams['font.size'] = 12
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-6,
+                 weight_decay=0, adam=False):
+        if not 0.0 <= lr:
+            raise ValueError("Invalid learning rate: {}".format(lr))
+        if not 0.0 <= eps:
+            raise ValueError("Invalid epsilon value: {}".format(eps))
+        if not 0.0 <= betas[0] < 1.0:
+            raise ValueError("Invalid beta parameter at index 0: {}".format(betas[0]))
+        if not 0.0 <= betas[1] < 1.0:
+            raise ValueError("Invalid beta parameter at index 1: {}".format(betas[1]))
+        defaults = dict(lr=lr, betas=betas, eps=eps,
+                        weight_decay=weight_decay)
+        self.adam = adam
+        super(Lamb, self).__init__(params, defaults)
 
-    for metric in metrics:
-        plt.figure()
+    def step(self, closure=None):
+        """Performs a single optimization step.
 
-        # Prepare data for plotting
-        models = list(results.keys())
-        features = list(results[models[0]].keys())
-        x = np.arange(len(features))
-        width = 0.35
+        Arguments:
+            closure (callable, optional): A closure that reevaluates the model
+                and returns the loss.
+        """
+        loss = None
+        if closure is not None:
+            loss = closure()
 
-        colors = ['#2196F3', '#4CAF50']  # Blue and Green
-        for i, (model, color) in enumerate(zip(models, colors)):
-            metric_values = [results[model][feature][metric] for feature in features]
-            plt.bar(x + i * width, metric_values, width, label=model,
-                    alpha=0.8, color=color)
+        for group in self.param_groups:
+            for p in group['params']:
+                if p.grad is None:
+                    continue
+                grad = p.grad.data
+                if grad.is_sparse:
+                    raise RuntimeError('Lamb does not support sparse gradients, consider SparseAdam instad.')
 
-        plt.xlabel('Protected Attributes', fontsize=12, labelpad=10)
-        plt.ylabel(metric.replace('_', ' ').title(), fontsize=12, labelpad=10)
-        plt.title(f'{metric.replace("_", " ").title()} by Protected Attribute',
-                  fontsize=14, pad=20)
+                state = self.state[p]
 
-        plt.xticks(x + width / 2,
-                   [f.replace('privileged_group_', '').replace('_', ' ')
-                    for f in features],
-                   rotation=45, ha='right')
+                # State initialization
+                if len(state) == 0:
+                    state['step'] = 0
+                    # Exponential moving average of gradient values
+                    state['exp_avg'] = torch.zeros_like(p.data)
+                    # Exponential moving average of squared gradient values
+                    state['exp_avg_sq'] = torch.zeros_like(p.data)
 
-        plt.legend(bbox_to_anchor=(1.02, 1), loc='upper left')
+                exp_avg, exp_avg_sq = state['exp_avg'], state['exp_avg_sq']
+                beta1, beta2 = group['betas']
 
-        if metric == 'disparate_impact':
-            plt.axhline(y=1, color='r', linestyle='--', alpha=0.3,
-                        label='Reference (y=1)')
-        else:
-            plt.axhline(y=0, color='r', linestyle='--', alpha=0.3,
-                        label='Reference (y=0)')
+                state['step'] += 1
 
-        plt.grid(True, alpha=0.3)
+                # Decay the first and second moment running average coefficient
+                # m_t
+                exp_avg.mul_(beta1).add_(1 - beta1, grad)
+                # v_t
+                exp_avg_sq.mul_(beta2).addcmul_(1 - beta2, grad, grad)
 
-        plt.tight_layout()
+                # Paper v3 does not use debiasing.
+                # Apply bias to lr to avoid broadcast.
+                step_size = group['lr'] # * math.sqrt(bias_correction2) / bias_correction1
 
-        plt.savefig(f"{save_path}_{metric}.png")
+                weight_norm = p.data.pow(2).sum().sqrt().clamp(0, 10)
 
-    plt.show()
+                adam_step = exp_avg / exp_avg_sq.sqrt().add(group['eps'])
+                if group['weight_decay'] != 0:
+                    adam_step.add_(group['weight_decay'], p.data)
 
+                adam_norm = adam_step.pow(2).sum().sqrt()
+                if weight_norm == 0 or adam_norm == 0:
+                    trust_ratio = 1
+                else:
+                    trust_ratio = weight_norm / adam_norm
+                state['weight_norm'] = weight_norm
+                state['adam_norm'] = adam_norm
+                state['trust_ratio'] = trust_ratio
+                if self.adam:
+                    trust_ratio = 1
 
-# if __name__ == "__main__":
-#     data_path = 'data\investigation_train_large_checked.csv'
-#     model_paths = [
-#         'models\model_1.onnx',
-#         'models\model_2.onnx'
-#     ]
+                p.data.add_(-step_size * trust_ratio, adam_step)
 
-#     protected_attributes = [
-#         'persoon_leeftijd_bij_onderzoek',
-#         'adres_aantal_brp_adres',
-#         'adres_aantal_verschillende_wijken',
-#         'adres_aantal_verzendadres',
-#         'adres_aantal_woonadres_handmatig',
-#         'adres_dagen_op_adres',
-#         'adres_recentst_onderdeel_rdam',
-#         'adres_recentste_buurt_groot_ijsselmonde',
-#         'adres_recentste_buurt_nieuwe_westen',
-#         'adres_recentste_buurt_other',
-#         'adres_recentste_buurt_oude_noorden',
-#         'adres_recentste_buurt_vreewijk',
-#         'adres_recentste_plaats_other',
-#         'adres_recentste_plaats_rotterdam',
-#         'adres_recentste_wijk_charlois',
-#         'adres_recentste_wijk_delfshaven',
-#         'adres_recentste_wijk_feijenoord',
-#         'adres_recentste_wijk_ijsselmonde',
-#         'adres_recentste_wijk_kralingen_c',
-#         'adres_recentste_wijk_noord',
-#         'adres_recentste_wijk_other',
-#         'adres_recentste_wijk_prins_alexa',
-#         'adres_recentste_wijk_stadscentru',
-#         'adres_unieke_wijk_ratio'
-#     ]
-
-#     results = analyze_model_fairness(data_path, model_paths, protected_attributes)
-#     # plot_fairness_metrics(results)
-#     print_fairness_report(results)
+        return loss

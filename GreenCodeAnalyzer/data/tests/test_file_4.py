@@ -1,192 +1,209 @@
-# From externally authored source: https://github.com/VenkteshV/DEXTER
+# From externally authored source: https://github.com/jingtaozhan/DRhard
 
-from configparser import ConfigParser
-import heapq
-from typing import Dict, List, Union, Tuple, Any
-import numpy as np
-import os
-import heapq
-import joblib
-from torch import Tensor
-import torch
-from tqdm import tqdm
-from dexter.data.datastructures.evidence import Evidence
-from dexter.data.datastructures.question import Question
+"""
+This is official eval script opensourced on MSMarco site (not written or owned by us)
 
-from transformers import AutoTokenizer, AutoModel
-import logging
-from dexter.data.datastructures.hyperparameters.dpr import DenseHyperParams
-from dexter.retriever.BaseRetriever import BaseRetriver
-from dexter.utils.metrics.SimilarityMatch import SimilarityMetric
+This module computes evaluation metrics for MSMARCO dataset on the ranking task.
+Command line:
+python msmarco_eval_ranking.py <path_to_reference_file> <path_to_candidate_file>
 
-class HfRetriever(BaseRetriver):
+Creation Date : 06/12/2018
+Last Modified : 1/21/2019
+Authors : Daniel Campos <dacamp@microsoft.com>, Rutger van Haasteren <ruvanh@microsoft.com>
+"""
+"""
+I (Jingtao Zhan) modified this script for evaluating MSMARCO Doc dataset. --- 4/19/2021
+"""
+import sys
+import statistics
 
-    def __init__(self,config=DenseHyperParams) -> None:
-        super().__init__()
-        self.config = config
-        #print("self.config.query_encoder_path",self.config.query_encoder_path)
-        self.question_tokenizer = AutoTokenizer.from_pretrained(self.config.query_encoder_path)
-        self.context_tokenizer = AutoTokenizer.from_pretrained(self.config.document_encoder_path)
-        self.question_encoder = AutoModel.from_pretrained(self.config.query_encoder_path)
-        self.context_encoder = AutoModel.from_pretrained(self.config.document_encoder_path)
-        self.question_encoder.cuda()
-        self.context_encoder.cuda()
-        self.batch_size = self.config.batch_size
-        self.sep="[SEP]"
-        self.logger = logging.getLogger(__name__)
+from collections import Counter
 
-    def mean_pooling(self, token_embeddings, mask):
-        token_embeddings = token_embeddings.masked_fill(~mask[..., None].bool(), 0.)
-        sentence_embeddings = token_embeddings.sum(dim=1) / mask.sum(dim=1)[..., None]
-        return sentence_embeddings
+MaxMRRRank = 10
+EVAL_DOC = False
 
-
-    def encode_queries(self, 
-                       queries: List[Question], 
-                       batch_size: int = 16,
-                         **kwargs) -> Union[List[Tensor], np.ndarray, Tensor]:
-        with torch.no_grad():
-            tokenized_questions = self.question_tokenizer([query.text() for query in queries], padding=True, truncation=True, return_tensors='pt').to("cuda")
-            token_emb =  self.question_encoder(**tokenized_questions)
-        print("token_emb",token_emb[0].shape)
-        sentence_emb = self.mean_pooling(token_emb[0],tokenized_questions["attention_mask"])
-        print("sentence_emb",sentence_emb.shape)
-        return sentence_emb
-    
-    def encode_corpus(self, 
-                      corpus: List[Evidence], 
-                      **kwargs
-                      ) -> Union[List[Tensor], np.ndarray, Tensor]:
-        contexts = []
-        for evidence in corpus:
-            context = ""
-            if evidence.title():
-                context = (evidence.title() + self.sep + evidence.text()).strip()
+def load_reference_from_stream(f):
+    """Load Reference reference relevant passages
+    Args:f (stream): stream to load.
+    Returns:qids_to_relevant_passageids (dict): dictionary mapping from query_id (int) to relevant passages (list of ints). 
+    """
+    qids_to_relevant_passageids = {}
+    for l in f:
+        try:
+            if EVAL_DOC:
+                l = l.strip().split(' ')
             else:
-                context = evidence.text().strip()
-            contexts.append(context)
-        context_embeddings = []
-        index = 0
-        pbar = tqdm(total = len(contexts))
-        print("Starting encoding of contexts....")
-        with torch.no_grad():
-            while index < len(contexts):
-                samples = contexts[index:index+self.batch_size]
-                tokenized_contexts = self.context_tokenizer(samples, padding=True, truncation=True, return_tensors='pt').to("cuda")
-                token_emb =  self.context_encoder(**tokenized_contexts)
-                sentence_emb = self.mean_pooling(token_emb[0],tokenized_contexts["attention_mask"])
-                context_embeddings.append(sentence_emb)
-                index += self.batch_size
-                pbar.update(self.batch_size)
-        pbar.close()
-        context_embeddings = torch.cat(context_embeddings,dim=0)
-        print("context_embeddings",context_embeddings.shape)
-        return context_embeddings
+                l = l.strip().split('\t')
+            qid = int(l[0])
+            if qid in qids_to_relevant_passageids:
+                pass
+            else:
+                qids_to_relevant_passageids[qid] = []
+            if EVAL_DOC:
+                assert l[2][0] == "D"
+                qids_to_relevant_passageids[qid].append(int(l[2][1:]))
+            else:
+                qids_to_relevant_passageids[qid].append(int(l[2]))
+        except:
+            raise IOError('\"%s\" is not valid format' % l)
+    return qids_to_relevant_passageids
 
-    def load_index_if_available(self)->Tuple[Any,bool]:
-        if os.path.exists("indices/corpus/index"):
-            corpus_embeddings = joblib.load("indices/corpus/index")
-            index_present=True
-        else:
-            index_present = False
-            corpus_embeddings=None
-        return corpus_embeddings, index_present
+def load_reference(path_to_reference):
+    """Load Reference reference relevant passages
+    Args:path_to_reference (str): path to a file to load.
+    Returns:qids_to_relevant_passageids (dict): dictionary mapping from query_id (int) to relevant passages (list of ints). 
+    """
+    with open(path_to_reference,'r') as f:
+        qids_to_relevant_passageids = load_reference_from_stream(f)
+    return qids_to_relevant_passageids
 
-    def retrieve_in_chunks(self,
-               corpus: List[Evidence], 
-               queries: List[Question], 
-               top_k: int, 
-               score_function: SimilarityMetric,
-               return_sorted: bool = True,
-                chunksize: int =200000,
-                show_progress_bar =True,
-                convert_to_tensor = True,
-                  **kwargs  ):
-        corpus_ids = [doc.id() for doc in corpus]
-        query_embeddings = self.encode_queries(queries, batch_size=self.batch_size)  
-        query_ids = [query.id() for query in queries]
-        result_heaps = {qid: [] for qid in query_ids}  # Keep only the top-k docs for each query
-        self.results = {qid: {} for qid in query_ids}
-        batches = range(0, len(corpus), chunksize)
-        for batch_num, corpus_start_idx in enumerate(batches):
-            self.logger.info("Encoding Batch {}/{}...".format(batch_num+1, len(batches)))
-            corpus_end_idx = min(corpus_start_idx + chunksize, len(corpus))
-
-            # Encode chunk of corpus    
-            sub_corpus_embeddings = self.encode_corpus(
-                corpus[corpus_start_idx:corpus_end_idx]
-                )
-
-            # Compute similarites using either cosine-similarity or dot product
-            cos_scores = score_function.evaluate(query_embeddings, sub_corpus_embeddings)
-            cos_scores[torch.isnan(cos_scores)] = -1
-
-            # Get top-k values
-            cos_scores_top_k_values, cos_scores_top_k_idx = torch.topk(cos_scores, min(top_k+1, len(cos_scores[1])), dim=1, largest=True, sorted=return_sorted)
-            cos_scores_top_k_values = cos_scores_top_k_values.cpu().tolist()
-            cos_scores_top_k_idx = cos_scores_top_k_idx.cpu().tolist()
-            
-            for query_itr in range(len(query_embeddings)):
-                query_id = query_ids[query_itr]                  
-                for sub_corpus_id, score in zip(cos_scores_top_k_idx[query_itr], cos_scores_top_k_values[query_itr]):
-                    corpus_id = corpus_ids[corpus_start_idx+sub_corpus_id]
-                    if corpus_id != query_id:
-                        if len(result_heaps[query_id]) < top_k:
-                            # Push item on the heap
-                            heapq.heappush(result_heaps[query_id], (score, corpus_id))
-                        else:
-                            # If item is larger than the smallest in the heap, push it on the heap then pop the smallest element
-                            heapq.heappushpop(result_heaps[query_id], (score, corpus_id))
-
-        for qid in result_heaps:
-            for score, corpus_id in result_heaps[qid]:
-                self.results[qid][corpus_id] = score
-        return self.results
-
-    def retrieve(self, 
-               corpus: List[Evidence], 
-               queries: List[Question], 
-               top_k: int, 
-               score_function: SimilarityMetric,
-               return_sorted: bool = True, 
-               chunk: bool = False,
-               chunksize = None,
-               **kwargs) -> Dict[str, Dict[str, float]]:
-
-            
-        self.logger.info("Encoding Queries...")
-
-        query_embeddings = self.encode_queries(queries, batch_size=self.batch_size)
-          
-        if chunk:
-            results = self.retrieve_in_chunks(corpus, 
-                                              queries,top_k=top_k,
-                                              score_function=score_function,return_sorted=return_sorted,
-                                              chunksize=chunksize)
-            return results
-   
-        self.logger.info("Encoding Corpus in batches... Warning: This might take a while!")
-        #self.logger.info("Scoring Function: {} ({})".format(self.score_function_desc[score_function], score_function))
-        embeddings, index_present = self.load_index_if_available()
-
-        #TODO:Comment below for index usage
-        index_present = False
-        if index_present:
-            corpus_embeddings = embeddings
-        else:
-            corpus_embeddings = self.encode_corpus(corpus)
-            #joblib.dump(corpus_embeddings,"indices/corpus/index")
-
-        # Compute similarites using either cosine-similarity or dot product
-        cos_scores = score_function.evaluate(query_embeddings,corpus_embeddings)
-        # Get top-k values
-        cos_scores_top_k_values, cos_scores_top_k_idx = torch.topk(cos_scores, min(top_k+1, len(cos_scores[1])), dim=1, largest=True, sorted=return_sorted)
-        cos_scores_top_k_values = cos_scores_top_k_values.cpu().tolist()
-        cos_scores_top_k_idx = cos_scores_top_k_idx.cpu().tolist()
-        response = {}
-        for idx, q in enumerate(queries):
-            response[q.id()] = {}
-            for index, id in enumerate(cos_scores_top_k_idx[idx]):
-                response[q.id()][corpus[id].id()] = float(cos_scores_top_k_values[idx][index])
-        return response
+def load_candidate_from_stream(f):
+    """Load candidate data from a stream.
+    Args:f (stream): stream to load.
+    Returns:qid_to_ranked_candidate_passages (dict): dictionary mapping from query_id (int) to a list of 1000 passage ids(int) ranked by relevance and importance
+    """
+    qid_to_ranked_candidate_passages = {}
+    for l in f:
+        try:
+            l = l.strip().split('\t')
+            qid = int(l[0])
+            if EVAL_DOC:
+                assert l[1][0] == "D"
+                pid = int(l[1][1:])
+            else:
+                pid = int(l[1])
+            rank = int(l[2])
+            if qid in qid_to_ranked_candidate_passages:
+                pass    
+            else:
+                # By default, all PIDs in the list of 1000 are 0. Only override those that are given
+                tmp = [0] * 1000
+                qid_to_ranked_candidate_passages[qid] = tmp
+            qid_to_ranked_candidate_passages[qid][rank-1]=pid
+        except:
+            raise IOError('\"%s\" is not valid format' % l)
+    return qid_to_ranked_candidate_passages
                 
+def load_candidate(path_to_candidate):
+    """Load candidate data from a file.
+    Args:path_to_candidate (str): path to file to load.
+    Returns:qid_to_ranked_candidate_passages (dict): dictionary mapping from query_id (int) to a list of 1000 passage ids(int) ranked by relevance and importance
+    """
+    
+    with open(path_to_candidate,'r') as f:
+        qid_to_ranked_candidate_passages = load_candidate_from_stream(f)
+    return qid_to_ranked_candidate_passages
+
+def quality_checks_qids(qids_to_relevant_passageids, qids_to_ranked_candidate_passages):
+    """Perform quality checks on the dictionaries
+
+    Args:
+    p_qids_to_relevant_passageids (dict): dictionary of query-passage mapping
+        Dict as read in with load_reference or load_reference_from_stream
+    p_qids_to_ranked_candidate_passages (dict): dictionary of query-passage candidates
+    Returns:
+        bool,str: Boolean whether allowed, message to be shown in case of a problem
+    """
+    message = ''
+    allowed = True
+
+    # Create sets of the QIDs for the submitted and reference queries
+    candidate_set = set(qids_to_ranked_candidate_passages.keys())
+    ref_set = set(qids_to_relevant_passageids.keys())
+
+    # Check that we do not have multiple passages per query
+    for qid in qids_to_ranked_candidate_passages:
+        # Remove all zeros from the candidates
+        duplicate_pids = set([item for item, count in Counter(qids_to_ranked_candidate_passages[qid]).items() if count > 1])
+
+        if len(duplicate_pids-set([0])) > 0:
+            message = "Cannot rank a passage multiple times for a single query. QID={qid}, PID={pid}".format(
+                    qid=qid, pid=list(duplicate_pids)[0])
+            allowed = False
+
+    return allowed, message
+
+def compute_metrics(qids_to_relevant_passageids, qids_to_ranked_candidate_passages):
+    """Compute MRR metric
+    Args:    
+    p_qids_to_relevant_passageids (dict): dictionary of query-passage mapping
+        Dict as read in with load_reference or load_reference_from_stream
+    p_qids_to_ranked_candidate_passages (dict): dictionary of query-passage candidates
+    Returns:
+        dict: dictionary of metrics {'MRR': <MRR Score>}
+    """
+    all_scores = {}
+    MRR = 0
+    qids_with_relevant_passages = 0
+    ranking = []
+    for qid in qids_to_ranked_candidate_passages:
+        if qid in qids_to_relevant_passageids:
+            ranking.append(0)
+            target_pid = qids_to_relevant_passageids[qid]
+            candidate_pid = qids_to_ranked_candidate_passages[qid]
+            for i in range(0,MaxMRRRank):
+                if candidate_pid[i] in target_pid:
+                    MRR += 1/(i + 1)
+                    ranking.pop()
+                    ranking.append(i+1)
+                    break
+    if len(ranking) == 0:
+        raise IOError("No matching QIDs found. Are you sure you are scoring the evaluation set?")
+    
+    MRR = MRR/len(qids_to_relevant_passageids)
+    all_scores[f'MRR @{MaxMRRRank}'] = MRR
+    all_scores['QueriesRanked'] = len(qids_to_ranked_candidate_passages)
+    return all_scores
+                
+def compute_metrics_from_files(path_to_reference, path_to_candidate, perform_checks=True):
+    """Compute MRR metric
+    Args:    
+    p_path_to_reference_file (str): path to reference file.
+        Reference file should contain lines in the following format:
+            QUERYID\tPASSAGEID
+            Where PASSAGEID is a relevant passage for a query. Note QUERYID can repeat on different lines with different PASSAGEIDs
+    p_path_to_candidate_file (str): path to candidate file.
+        Candidate file sould contain lines in the following format:
+            QUERYID\tPASSAGEID1\tRank
+            If a user wishes to use the TREC format please run the script with a -t flag at the end. If this flag is used the expected format is 
+            QUERYID\tITER\tDOCNO\tRANK\tSIM\tRUNID 
+            Where the values are separated by tabs and ranked in order of relevance 
+    Returns:
+        dict: dictionary of metrics {'MRR': <MRR Score>}
+    """
+    
+    qids_to_relevant_passageids = load_reference(path_to_reference)
+    qids_to_ranked_candidate_passages = load_candidate(path_to_candidate)
+    if perform_checks:
+        allowed, message = quality_checks_qids(qids_to_relevant_passageids, qids_to_ranked_candidate_passages)
+        if message != '': print(message)
+
+    return compute_metrics(qids_to_relevant_passageids, qids_to_ranked_candidate_passages)
+
+def main():
+    """Command line:
+    python msmarco_eval_ranking.py <path_to_reference_file> <path_to_candidate_file>
+    """
+    print("Eval Started")
+    if len(sys.argv) in [3,4] :
+        path_to_reference = sys.argv[1]
+        path_to_candidate = sys.argv[2]
+        if len(sys.argv) == 4:
+            global MaxMRRRank
+            if sys.argv[3] == "doc":
+                global EVAL_DOC
+                MaxMRRRank, EVAL_DOC = 100, True
+            else:
+                MaxMRRRank = int(sys.argv[3])
+        metrics = compute_metrics_from_files(path_to_reference, path_to_candidate)
+        print('#####################')
+        for metric in sorted(metrics):
+            print('{}: {}'.format(metric, metrics[metric]))
+        print('#####################')
+
+    else:
+        print('Usage: msmarco_eval_ranking.py <reference ranking> <candidate ranking> [MaxMRRRank or DocEval]')
+        exit()
+    
+if __name__ == '__main__':
+    main()
